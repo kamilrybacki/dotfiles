@@ -1,0 +1,66 @@
+! Everforest Dark color palette
+! Source of truth for i3 and Polybar colors
+
+#define bg_dim   #272e33
+#define bg0      #2e383c
+#define bg1      #374145
+#define bg2      #4a555b
+#define fg       #d3c6aa
+#define green    #a7c080
+#define aqua     #83c092
+#define blue     #7fbbb3
+#define yellow   #dbbc7f
+#define orange   #e69875
+#define red      #e67e80
+#define purple   #d699b6
+
+! Map to standard terminal color slots
+*background:  bg0
+*foreground:  fg
+*cursorColor: fg
+
+! Black
+*color0:  bg_dim
+*color8:  bg2
+
+! Red
+*color1:  red
+*color9:  red
+
+! Green
+*color2:  green
+*color10: green
+
+! Yellow
+*color3:  yellow
+*color11: yellow
+
+! Blue
+*color4:  blue
+*color12: blue
+
+! Magenta
+*color5:  purple
+*color13: purple
+
+! Cyan
+*color6:  aqua
+*color14: aqua
+
+! White
+*color7:  fg
+*color15: #e6dcc6
+
+! Named colors for i3/polybar consumption
+*efBgDim:  bg_dim
+*efBg0:    bg0
+*efBg1:    bg1
+*efBg2:    bg2
+*efFg:     fg
+*efGreen:  green
+*efAqua:   aqua
+*efBlue:   blue
+*efYellow: yellow
+*efOrange: orange
+*efRed:    red
+*efPurple: purple

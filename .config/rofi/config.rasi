@@ -1,0 +1,11 @@
+configuration {
+    modi: "drun,window,run";
+    show-icons: true;
+    icon-theme: "Papirus";
+    display-drun: "  Apps";
+    display-window: "  Windows";
+    display-run: "  Run";
+    drun-display-format: "{name}";
+}
+
+@theme "everforest"

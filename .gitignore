@@ -1,0 +1,12 @@
+# Secrets — never commit these
+.zshrc.secrets
+*.secrets
+
+# Compiled / generated
+*.pyc
+__pycache__/
+
+# Editor
+.vscode/
+*.swp
+*.swo

@@ -1,0 +1,48 @@
+[global]
+font = JetBrainsMono Nerd Font 10
+allow_markup = yes
+format = "<b>%s</b>\n%b"
+sort = yes
+indicate_hidden = yes
+alignment = left
+show_age_threshold = 60
+word_wrap = yes
+ignore_newline = no
+width = 320
+height = 160
+origin = top-right
+offset = 16x50
+transparency = 0
+idle_threshold = 120
+follow = mouse
+sticky_history = yes
+history_length = 20
+show_indicators = yes
+line_height = 0
+separator_height = 2
+padding = 12
+horizontal_padding = 16
+separator_color = "#374145"
+corner_radius = 10
+frame_width = 2
+frame_color = "#374145"
+icon_position = left
+max_icon_size = 48
+
+[urgency_low]
+background = "#2e383c"
+foreground = "#d3c6aa"
+frame_color = "#374145"
+timeout = 5
+
+[urgency_normal]
+background = "#2e383c"
+foreground = "#d3c6aa"
+frame_color = "#a7c080"
+timeout = 10
+
+[urgency_critical]
+background = "#2e383c"
+foreground = "#d3c6aa"
+frame_color = "#e67e80"
+timeout = 0
