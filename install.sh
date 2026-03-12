@@ -28,6 +28,7 @@ echo
 link ".Xresources"
 link ".zshrc"
 link ".config/i3/config"
+link ".config/picom/picom.conf"
 link ".config/polybar/config.ini"
 link ".config/polybar/launch.sh"
 link ".config/rofi/config.rasi"

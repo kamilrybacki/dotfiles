@@ -20,13 +20,14 @@ set_from_resource $purple  efPurple #d699b6
 # Font
 font pango:JetBrainsMono Nerd Font 9
 
-# No title bars, 2px border
-default_border pixel 2
-default_floating_border pixel 2
+# No borders
+default_border none
+default_floating_border none
 
 # Gaps
 gaps inner 10
 gaps outer 5
+smart_gaps on
 
 # Disable focus follows mouse
 focus_follows_mouse no
@@ -150,6 +151,7 @@ bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'Exit i3?' -B 'Yes' 'i3-msg e
 
 # Autostart
 exec --no-startup-id xrdb -merge ~/.Xresources
+exec_always --no-startup-id pkill picom; picom --daemon
 exec_always --no-startup-id ~/.config/polybar/launch.sh
 exec --no-startup-id dunst
 exec --no-startup-id feh --bg-fill ~/.local/share/wallpapers/current.png
