@@ -12,7 +12,9 @@ HERMES_FILE="$HELM_REPO/charts/hermes/files/AGENTS.md"
 rc=0
 
 "$RS" generate -g --targets claudecode --features rules --check || rc=1
+"$RS" generate -g --targets claudecode --features mcp --check || rc=1
 "$RS" generate --targets codexcli --features rules -o "$HOME/.codex" --check || rc=1
+"$RS" generate -g --targets codexcli --features mcp --check || rc=1
 
 # Hermes: render to staging and byte-compare against the committed helm file.
 STAGE="$(mktemp -d)"; trap 'rm -rf "$STAGE"' EXIT

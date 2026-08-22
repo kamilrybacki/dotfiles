@@ -15,8 +15,15 @@ HELM_REPO="${HELM_REPO:-$HOME/Code/helm}"
 HERMES_FILE="$HELM_REPO/charts/hermes/files/AGENTS.md"
 
 # Local agents → their live global paths.
+# rules: claudecode supports global; codexcli does not, so it needs -o ~/.codex.
+# mcp:   both support global (-g) and MERGE into the existing config, preserving
+#        all other settings (model/auth in config.toml, projects/history in
+#        ~/.claude.json). The cellarette server here has NO secret (local :8788
+#        proxy injects the Bearer), so the source stays git-safe.
 "$RS" generate -g --targets claudecode --features rules
+"$RS" generate -g --targets claudecode --features mcp
 "$RS" generate --targets codexcli --features rules -o "$HOME/.codex"
+"$RS" generate -g --targets codexcli --features mcp
 
 # Hermes lives in a container: render to staging, copy into the helm chart.
 # The actual deploy is GitOps — commit + PR the helm change; ArgoCD seeds the PVC.

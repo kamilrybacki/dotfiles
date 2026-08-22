@@ -1,0 +1,14 @@
+{
+  // Canonical MCP server set every CLI agent should have. Generated into each
+  // agent's native MCP config (~/.claude.json, ~/.codex/config.toml) by
+  // `npm run agents:sync` — rulesync MERGES these in, preserving all other
+  // settings. No secrets here: cellarette is reached via the local proxy on
+  // :8788 which injects the Bearer token, so this file is safe to commit.
+  //
+  // This is the "bare install" contract: a fresh CLI agent needs only this sync
+  // system + a reachable Cellarette (the :8788 proxy) to get its full toolset.
+  "mcpServers": {
+    "graft": { "command": "graft", "args": ["mcp"] },
+    "cellarette": { "type": "http", "url": "http://localhost:8788/mcp?profile=workspace" }
+  }
+}
