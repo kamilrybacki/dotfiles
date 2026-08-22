@@ -38,4 +38,16 @@ if [ -f "$STAGE/.hermes.md" ] && [ -f "$HERMES_FILE" ]; then
     echo "hermes: UPDATED $HERMES_FILE — commit + PR to deploy (ArgoCD → ConfigMap → PVC)"
   fi
 fi
+# Our hand-authored skills: copied byte-faithfully. rulesync's skill generator
+# strips Claude-specific SKILL.md frontmatter (`args:`, folds `description`), so
+# skills are versioned as plain files and cp'd, NOT routed through rulesync.
+# Additive only — never touches the plugin-symlinked skills alongside them.
+SKILLS_DST="$HOME/.claude/skills"
+mkdir -p "$SKILLS_DST"
+for d in skills/*/; do
+  [ -d "$d" ] || continue
+  cp -a "$d" "$SKILLS_DST/$(basename "$d")"
+done
+echo "skills: synced $(find skills -maxdepth 1 -mindepth 1 -type d | wc -l) to $SKILLS_DST"
+
 echo "agents synced."

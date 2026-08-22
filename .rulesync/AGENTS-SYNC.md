@@ -46,6 +46,23 @@ npm run agents:check   # drift guard: non-zero exit if any file is out of sync (
 Edit a shared block once in `.rulesync/rules/*.md`, run `agents:sync`. For Hermes,
 the helm file is updated locally — commit + PR it; ArgoCD delivers it to the PVC.
 
+## Skills & plugins (not rulesync)
+
+- **Our hand-authored skills** live in `../skills/` (plain files, byte-faithful) and are
+  cp'd to `~/.claude/skills/` by `agents:sync`. They are NOT routed through rulesync —
+  its skill generator strips Claude-specific SKILL.md frontmatter (`args:`) and reformats
+  `description`. `agents:check` diffs them for drift.
+- **Third-party plugins** (design set, tdd, review, deep-research, grill-me, caveman, …)
+  come from marketplaces and are declared in `../plugins/` (`marketplaces.txt` +
+  `plugins.txt` + `restore.sh`). That is why `~/.claude/skills/` is mostly symlinks into
+  plugin caches — those are plugin-owned, not vendored here.
+
+## Bare-install contract
+
+A fresh CLI agent needs only: this dotfiles sync + a reachable Cellarette (:8788 proxy).
+`npm install && npm run agents:sync` gives it rules + MCP(cellarette) + our skills;
+`plugins/restore.sh` re-adds the marketplaces + plugins.
+
 ## Onboard a NEW agent
 
 1. Add its rulesync target id to `targets` in `rulesync.jsonc` (rulesync supports

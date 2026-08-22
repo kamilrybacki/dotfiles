@@ -1,0 +1,8 @@
+agentmemory	rohitg00/agentmemory
+caveman	JuliusBrussee/caveman
+claude-plugins-official	anthropics/claude-plugins-official
+everything-claude-code	affaan-m/everything-claude-code
+mattpocock	mattpocock/skills
+n8n-mcp-skills	czlonkowski/n8n-skills
+openai-codex	openai/codex-plugin-cc
+superpowers-marketplace	obra/superpowers-marketplace

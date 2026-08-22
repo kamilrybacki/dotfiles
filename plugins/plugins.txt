@@ -1,0 +1,11 @@
+agentmemory@agentmemory
+caveman@caveman
+codex@openai-codex
+context7@claude-plugins-official
+everything-claude-code@everything-claude-code
+github@claude-plugins-official
+mattpocock-skills@mattpocock
+n8n-mcp-skills@n8n-mcp-skills
+rust-analyzer-lsp@claude-plugins-official
+serena@claude-plugins-official
+superpowers@claude-plugins-official

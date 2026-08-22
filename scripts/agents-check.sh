@@ -28,5 +28,15 @@ if [ -f "$STAGE/.hermes.md" ] && [ -f "$HERMES_FILE" ]; then
   fi
 fi
 
+# Our hand-authored skills (byte-faithful copy, not rulesync-generated).
+for d in skills/*/; do
+  [ -d "$d" ] || continue
+  b="$(basename "$d")"
+  if diff -rq "$d" "$HOME/.claude/skills/$b" >/dev/null 2>&1; then :; else
+    echo "DRIFT  skill: $b"; rc=1
+  fi
+done
+[ "$rc" -eq 0 ] && echo "ok     skills"
+
 [ "$rc" -eq 0 ] && echo "all agents in sync." || echo "drift detected — run: npm run agents:sync" >&2
 exit "$rc"
