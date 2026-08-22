@@ -1,0 +1,9 @@
+{
+  "$schema": "https://github.com/dyoshikawa/rulesync/releases/latest/download/config-schema.json",
+  // Source of truth for shared agent instructions. See agents-README below.
+  // delete:false so rulesync NEVER prunes the hand-maintained ~/.claude/rules/ tree
+  // (44 Claude-only language rules that no other agent needs).
+  "targets": ["claudecode", "codexcli", "hermesagent"],
+  "features": ["rules"],
+  "delete": false
+}

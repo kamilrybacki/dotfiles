@@ -1,0 +1,12 @@
+{
+  "name": "dotfiles-agent-config",
+  "private": true,
+  "description": "rulesync-driven single source of truth for agent instruction files (.rulesync/)",
+  "scripts": {
+    "agents:sync": "bash scripts/agents-sync.sh",
+    "agents:check": "bash scripts/agents-check.sh"
+  },
+  "devDependencies": {
+    "rulesync": "16.14.0"
+  }
+}
