@@ -8,7 +8,11 @@
   // This is the "bare install" contract: a fresh CLI agent needs only this sync
   // system + a reachable Cellarette (the :8788 proxy) to get its full toolset.
   "mcpServers": {
+    // NOTE: this is the LOCAL cellarette aggregator (systemd :8788). Its only
+    // profile is `default` = all tools. Do NOT use `workspace` here — that is the
+    // IN-CLUSTER cellarette's profile; locally there is no `workspace` profile and
+    // it yields ZERO tools.
     "graft": { "command": "graft", "args": ["mcp"] },
-    "cellarette": { "type": "http", "url": "http://localhost:8788/mcp?profile=workspace" }
+    "cellarette": { "type": "http", "url": "http://localhost:8788/mcp?profile=default" }
   }
 }
