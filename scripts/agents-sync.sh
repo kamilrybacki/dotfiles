@@ -46,7 +46,9 @@ SKILLS_DST="$HOME/.claude/skills"
 mkdir -p "$SKILLS_DST"
 for d in skills/*/; do
   [ -d "$d" ] || continue
-  cp -a "$d" "$SKILLS_DST/$(basename "$d")"
+  dest="$SKILLS_DST/$(basename "$d")"
+  rm -rf "$dest"          # replace, don't nest (cp into an existing dir creates dest/src)
+  cp -a "${d%/}" "$dest"
 done
 echo "skills: synced $(find skills -maxdepth 1 -mindepth 1 -type d | wc -l) to $SKILLS_DST"
 
