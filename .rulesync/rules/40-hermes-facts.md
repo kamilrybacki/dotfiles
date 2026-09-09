@@ -12,9 +12,19 @@ globs: ["**/*"]
   prune+selfHeal). A helm commit alone deploys nothing without that app entry.
 - **Ansible, not ArgoCD, owns:** the edge (Caddy `secure-homelab-access` role — a public
   host = add the route + Authelia forward-auth snippet, then an operator runs the caddy
-  role), k8s Secrets (the `k8s-secrets` role reads Vault `secret/homelab/*` + control-machine
-  files), and the NAS exports (`nas-setup/roles/nfs`). You cannot run ansible or ssh the NAS —
-  stage the git change and ask the operator to apply.
+  role), the few k8s Secrets ESO cannot deliver (`k8s-secrets` role: vault-mcp-token, Codex/Claude
+  auth files from the control machine), and the NAS exports (`nas-setup/roles/nfs`). You cannot
+  run ansible or ssh the NAS — stage the git change and ask the operator to apply.
+- **Secrets (since 2026-09-09).** Vault is the single source of truth, laid out by ISSUER:
+  `secret/homelab/v2/<issuer>/<credential>` with one leaf per consumer (e.g. `github/hermes#token`,
+  `discord/hermes-bot#token`, `postgres/n8n#password`); fields use a closed vocabulary (token,
+  api_key, password, client_secret, refresh_token, webhook_url, private_key, cert, encryption_key,
+  salt, signing_key). Rules + runbook: `ansible/security/vault-setup/VAULT-TAXONOMY.md`. k8s
+  Secrets are delivered by External Secrets Operator from `argocd-apps/secrets/eso/<ns>/`
+  (sops files are retired); a new k8s Secret = a Vault leaf + an entry in
+  `ansible/security/vault-setup/migrate/eso/manifest.yaml` → `generate.py`. The `v2/` prefix
+  moves to `homelab/` at the end of the migration; the old flat `secret/homelab/<service>` leaves
+  are being deleted — never write new secrets there.
 - **Nodes:** lw-c1 (192.168.0.107, most CPU), lw-c2 (.240 — YOU run here), lw-c3 (.108) —
   **all three are k3s control-plane servers** (CP-HA applied 2026-09-09) on the external Postgres
   datastore. lw-main (.111, edge Caddy + Vault :8200), lw-nas (.115), lw-pi (.109, standalone RPi).
