@@ -16,15 +16,16 @@ globs: ["**/*"]
   auth files from the control machine), and the NAS exports (`nas-setup/roles/nfs`). You cannot
   run ansible or ssh the NAS — stage the git change and ask the operator to apply.
 - **Secrets (since 2026-09-09).** Vault is the single source of truth, laid out by ISSUER:
-  `secret/homelab/v2/<issuer>/<credential>` with one leaf per consumer (e.g. `github/hermes#token`,
+  `secret/homelab/<issuer>/<credential>` with one leaf per consumer (e.g. `github/hermes#token`,
   `discord/hermes-bot#token`, `postgres/n8n#password`); fields use a closed vocabulary (token,
   api_key, password, client_secret, refresh_token, webhook_url, private_key, cert, encryption_key,
   salt, signing_key). Rules + runbook: `ansible/security/vault-setup/VAULT-TAXONOMY.md`. k8s
-  Secrets are delivered by External Secrets Operator from `argocd-apps/secrets/eso/<ns>/`
-  (sops files are retired); a new k8s Secret = a Vault leaf + an entry in
-  `ansible/security/vault-setup/migrate/eso/manifest.yaml` → `generate.py`. The `v2/` prefix
-  moves to `homelab/` at the end of the migration; the old flat `secret/homelab/<service>` leaves
-  are being deleted — never write new secrets there.
+  Secrets are delivered by External Secrets Operator from `argocd-apps/secrets/eso/<ns>/` (the
+  `eso-secrets` ArgoCD app; sops files are retired); a new k8s Secret = a Vault leaf + an entry in
+  `ansible/security/vault-setup/migrate/eso/manifest.yaml` → `generate.py`. A restricted tier
+  (wireguard, pihole, cloudflare, machines, k3s, and specific power paths like
+  `postgres/k3s-datastore`, `hashicorp-vault/{root,unseal}`, `authelia/admin`) is denied to the
+  agents/k8s policies. The old flat `secret/homelab/<service>` layout is gone — never recreate it.
 - **Nodes:** lw-c1 (192.168.0.107, most CPU), lw-c2 (.240 — YOU run here), lw-c3 (.108) —
   **all three are k3s control-plane servers** (CP-HA applied 2026-09-09) on the external Postgres
   datastore. lw-main (.111, edge Caddy + Vault :8200), lw-nas (.115), lw-pi (.109, standalone RPi).
