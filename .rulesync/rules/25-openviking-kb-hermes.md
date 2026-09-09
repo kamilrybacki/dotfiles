@@ -22,3 +22,9 @@ globs: ["**/*"]
   this for their findings; for interactive work it's optional.
 - If `openviking__*` isn't in your profile or `openviking__health` is unhealthy, skip silently —
   never block a task on the KB being reachable.
+- **Auth (infra fact):** OV's `/mcp` accepts only the OpenViking ROOT key; the in-cluster caddy
+  sidecar (`:8000`) injects it for you, so `openviking__*` just works. If these tools ever start
+  failing with `-32001 "Invalid API Key"`, it's a sidecar/key misconfig, not your call being wrong
+  — flag the operator (fixed 2026-09-09: sidecar was injecting the USER key → 401). A one-off
+  `"Invalid API Key"` that succeeds on retry is a known transient on the single-replica pilot; just
+  retry.
