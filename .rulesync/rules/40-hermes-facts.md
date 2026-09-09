@@ -15,17 +15,18 @@ globs: ["**/*"]
   role), k8s Secrets (the `k8s-secrets` role reads Vault `secret/homelab/*` + control-machine
   files), and the NAS exports (`nas-setup/roles/nfs`). You cannot run ansible or ssh the NAS —
   stage the git change and ask the operator to apply.
-- **Nodes:** lw-c1 (192.168.0.107, worker/agent, most CPU), lw-c2 (.240, worker/agent — YOU
-  run here), lw-c3 (.108, **SOLE control-plane / k3s server**; c1+c2 are agents only),
-  lw-main (.111, edge Caddy + Vault :8200), lw-nas (.115), lw-pi (.109, standalone RPi).
-  Traefik VIP .50, k8s API VIP .60. Edge path: Internet → Cloudflare tunnel → Caddy →
-  Authelia → Traefik VIP → cluster; hosts are `*.kamilandrzejrybacki.dpdns.org`.
+- **Nodes:** lw-c1 (192.168.0.107, most CPU), lw-c2 (.240 — YOU run here), lw-c3 (.108) —
+  **all three are k3s control-plane servers** (CP-HA applied 2026-09-09) on the external Postgres
+  datastore. lw-main (.111, edge Caddy + Vault :8200), lw-nas (.115), lw-pi (.109, standalone RPi).
+  Traefik VIP .50, k8s API VIP .60 (kube-vip on c2/c3 only — c1 excluded by design). Edge path:
+  Internet → Cloudflare tunnel → Caddy → Authelia → Traefik VIP → cluster; hosts are
+  `*.kamilandrzejrybacki.dpdns.org`.
 - **Control-plane / datastore resilience.** k3s datastore = external Postgres on lw-nas
-  (`192.168.0.115:5432`, kine). c3 is the ONLY control-plane node. So **lw-nas is a hard SPOF:
-  if the NAS is down, the k3s API + every hosted service is down** (datastore unreachable →
-  c3's k3s can't start → API VIP .60 unannounced → all ingress 502s). Multi-server CP-HA is
-  supported in ansible IaC (`infrastructure/k3s-cluster-setup`, on `main`) but **NOT applied** —
-  do not assume HA. If you observe a cluster-wide outage, suspect the NAS first.
+  (`192.168.0.115:5432`, kine). **CP-HA is applied: all 3 nodes are servers, so a single
+  control-plane node dying is survivable** (VIP .60 fails over c2↔c3, verified). BUT **lw-nas is
+  still a hard SPOF: if the NAS is down, the k3s API + every hosted service is down** (datastore +
+  NFS both live only on the NAS → datastore unreachable → API dies → all ingress 502s). CP-HA does
+  NOT change that. If you observe a cluster-wide outage, suspect the NAS first.
 - **SSH to homelab hosts = the cellarette `ssh__run` tool. NEVER a local ssh.** Your own pod
   has NO ssh client and you CANNOT install one (you run as uid 1001, no sudo — do not try apt,
   do not look for `/usr/bin/ssh`, `~/.ssh`, or a local key; they are irrelevant). To run a
