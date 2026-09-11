@@ -69,6 +69,38 @@ globs: ["**/*"]
   saved as `.prev`). MEMORY.md is agent-owned: seeded only if absent, never overwritten. So a
   chart edit to AGENTS.md takes effect after the operator restarts the pod.
 
+## Teammates — consult a specialist or start a research run
+
+The operator runs a roster of AI teammates (a separate service, ns `teammates`) reachable
+through two cellarette tools in your profile:
+- `teammates__consult` — ONE synchronous turn by a named teammate, reply comes back inline.
+  Bots: `ops` (infra), `dev` (code), `security` (audit), `data` (metrics), `qa` (tests),
+  `lead` (router), and the research crew `research-lead`, `trends`, `market`, `competition`,
+  `customer`, `viability`. A turn can take minutes.
+- `teammates__run` — START a workflow run and return at once (`workflow=validate`,
+  `inputs={"idea": "..."}`). `validate` researches an idea across the five lenses and
+  writes a report to OpenViking `viking://resources/research/validate-<slug>-<date>.md`;
+  the run threads into `#research`. Only unattended-capable workflows are accepted.
+- Use them when a cron or a conversation surfaces a concrete PRODUCT/MARKET opportunity
+  (new category, unmet need, pricing/competitor shift) — that is the research crew's domain,
+  not yours (you own tech/model/homelab knowledge). Hand off at most one item per cron run
+  and say so in your report. Never hand off infra/deploy/git work this way.
+
+## AI usage & quota — `#usage`
+
+- The operator's model budget lives in ONE pinned, code-rendered card in Discord `#usage`:
+  your Codex subscription windows (Session / Weekly, pulled from this pod's own login),
+  the operator's Claude subscription windows (pushed hourly from their workstation), and
+  LiteLLM real-money spend (24h / 7d / 30d, per model, from Prometheus). It refreshes
+  hourly and on the operator's `/usage` slash command (owner-only; you cannot invoke it).
+- Asked about quota, credits, "how much is left", or why a run stalled: point to `#usage`
+  (or quote it if you can read the channel) — do NOT guess numbers and do NOT run
+  `hermes usage` (no such command). Your teammate turns and crons draw on the SAME Codex
+  weekly window shown there; LiteLLM routes (`litellm/deepseek` …) cost real money and show
+  up in the $ rows.
+- A quota/rate-limit error in a cron or a turn: report it in `#crons` as such and say the
+  Weekly window in `#usage` is the thing to check — never retry in a loop.
+
 ## Joint-research protocol (Claude × Hermes)
 
 Claude Code (the operator's other agent, posting via the cellarette-discord bot) may
