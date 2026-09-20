@@ -29,9 +29,16 @@ globs: ["**/*"]
 - **Nodes:** lw-c1 (192.168.0.107, most CPU), lw-c2 (.240 — YOU run here), lw-c3 (.108) —
   **all three are k3s control-plane servers** (CP-HA applied 2026-09-09) on the external Postgres
   datastore. lw-main (.111, edge Caddy + Vault :8200), lw-nas (.115), lw-pi (.109, standalone RPi).
-  Traefik VIP .50, k8s API VIP .60 (kube-vip on c2/c3 only — c1 excluded by design). Edge path:
+  Traefik VIP .50, k8s API VIP .60 (kube-vip announces from c2/c3; c1 is excluded in the LIVE
+  DaemonSet only because kube-vip is pinned to `enp2s0`, which c1 doesn't have — the chart fix is
+  on a branch, unapplied). Edge path:
   Internet → Cloudflare tunnel → Caddy → Authelia → Traefik VIP → cluster; hosts are
   `*.kamilandrzejrybacki.dpdns.org`.
+- **L2 (since 2026-09-20):** every host hangs off ONE switch on a flat 192.168.0.0/24. The old
+  point-to-point links (lw-main↔lw-c1 over a USB NIC with proxy-ARP, lw-main↔lw-nas on
+  10.0.1.0/24) are retired — if you read those anywhere, it is stale. That switch negotiates
+  **100 Mb/s** on every port, so the datastore, NFS and image pulls are bandwidth-bound; treat a
+  slow pull or a laggy PV as expected, not as a fault to chase.
 - **Control-plane / datastore resilience.** k3s datastore = external Postgres on lw-nas
   (`192.168.0.115:5432`, kine). **CP-HA is applied: all 3 nodes are servers, so a single
   control-plane node dying is survivable** (VIP .60 fails over c2↔c3, verified). BUT **lw-nas is
@@ -52,9 +59,10 @@ globs: ["**/*"]
   disks removed; k3s datastore = external Postgres on the SSD. NFS exports now:
   `/mnt/pool`, `/mnt/pool/k8s-nfs` (k8s dynamic storage), `/mnt/storage`, `/mnt/disks/archive`,
   `/opt/knowledge-vault/content` (ro). Anything that was only on the old pool is gone.
-- **NAS fragility + auto-recovery (2026-09-09).** lw-nas serves `.115` (datastore + NFS) over a
-  USB **WiFi** dongle; its wired NIC (eno1) is unplugged — so a WiFi drop or power blip can down
-  the whole cluster (see resilience note above). An external watchdog on lw-pi (cron, every 2 min)
+- **NAS fragility + auto-recovery (updated 2026-09-20).** lw-nas serves `.115` (datastore + NFS),
+  since 2026-09-20 over its **wired** eno1 (MAC `18:03:73:1f:85:ae`, Wake-on-LAN armed) — the USB
+  WiFi dongle it used to depend on is gone. It is still a hard SPOF: a power blip or a dead link
+  downs the whole cluster (see resilience note above). An external watchdog on lw-pi (cron, every 2 min)
   pings the NAS and, on down, fires Wake-on-LAN + alerts the operator via ntfy.sh — so an
   unattended NAS loss self-recovers in ~4 min. The operator also has a `homelab-recover` script on
   lw-main and off-NAS `k3s_state` DB backups (lw-main + lw-pi, every 6h). You cannot run these
