@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 
 MARKER = "jev-gate"
+GATE = Path.home() / ".local" / "bin" / "jev-gate"
 TARGETS = {
     "claude": {
         "path": Path.home() / ".claude" / "settings.json",
@@ -29,7 +30,7 @@ TARGETS = {
 
 def _entries(harness: str, cfg: dict) -> dict[str, dict]:
     def hook(mode: str) -> dict:
-        return {"type": "command", "command": f"jev-gate --harness {harness} {mode}", "timeout": cfg["timeout"]}
+        return {"type": "command", "command": f"{GATE} --harness {harness} {mode}", "timeout": cfg["timeout"]}
 
     return {
         "PreToolUse": {"matcher": cfg["shell_matcher"], "hooks": [hook("exec")]},

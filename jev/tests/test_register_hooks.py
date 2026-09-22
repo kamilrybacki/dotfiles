@@ -16,7 +16,8 @@ EXISTING = {
 def test_adds_hooks_and_keeps_existing():
     new = updated_config(EXISTING, "claude", TARGETS["claude"], remove=False)
     commands = [h["command"] for g in new["hooks"]["PreToolUse"] for h in g["hooks"]]
-    assert commands == ["rtk-rewrite.sh", "jev-gate --harness claude exec"]
+    assert commands[0] == "rtk-rewrite.sh"
+    assert commands[1].endswith("/.local/bin/jev-gate --harness claude exec")
     assert new["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"].endswith("context")
     assert new["model"] == "x"
 
