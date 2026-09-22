@@ -8,6 +8,7 @@ the harness. Nothing here ever returns "allow".
 from __future__ import annotations
 
 import json
+import os
 import re
 import shlex
 from dataclasses import dataclass
@@ -32,6 +33,10 @@ class Policy:
     ask: tuple[Rule, ...]
     trusted_commands: frozenset[str]
     thresholds: dict
+    # advisory: only deny rules block; ask rules + Jev verdicts are logged, Jev runs
+    #           in the background (no added latency, auto-mode friendly).
+    # enforce:  ask rules prompt; Jev can ask/deny synchronously.
+    mode: str = "advisory"
 
 
 @dataclass(frozen=True)
@@ -51,6 +56,7 @@ def load_policy(path: Path | None = None) -> Policy:
         ask=_rules(raw.get("ask", [])),
         trusted_commands=frozenset(raw.get("trusted_commands", [])),
         thresholds=dict(raw.get("thresholds", {})),
+        mode=os.environ.get("JEV_EXEC_MODE") or raw.get("mode", "advisory"),
     )
 
 

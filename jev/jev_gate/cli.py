@@ -30,6 +30,7 @@ def _parser() -> argparse.ArgumentParser:
     exec_parser = sub.add_parser("exec")
     exec_parser.add_argument("--policy", type=Path, default=None)
     sub.add_parser("context")
+    sub.add_parser("audit", help="internal: background Jev verdict for advisory mode")
     route_parser = sub.add_parser("route")
     route_parser.add_argument("--task", required=True)
     route_parser.add_argument("--file", action="append", default=[])
@@ -66,6 +67,12 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if output:
             print(output)
+        return 0
+    if args.mode == "audit":
+        try:
+            exec_gate.audit(json.loads(sys.stdin.read() or "{}"), load_policy(), args.harness, max(args.timeout, 10.0))
+        except Exception:  # noqa: BLE001 - detached; nothing to report to
+            pass
         return 0
     if args.mode == "route":
         print(json.dumps(route.classify(args.task, args.file, args.timeout)))

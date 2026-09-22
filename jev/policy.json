@@ -1,5 +1,7 @@
 {
   "_comment": "Programmable exec policy (Jev Engineering \u00a7IV-A). deny/ask are regexes over the raw command. trusted_commands skip the Jev call when EVERY pipeline segment starts with one of them and nothing is redirected. The gate never grants 'allow' - it only tightens the harness's own permission flow.",
+  "_mode": "advisory (default): only deny rules block; ask rules and Jev verdicts are only logged, Jev runs in the background (no added latency) so auto mode is never interrupted. enforce: ask rules prompt and Jev can ask/deny synchronously. off: deny rules only, no Jev call. Env JEV_EXEC_MODE overrides.",
+  "mode": "advisory",
   "deny": [
     {
       "pattern": "(~|\\$HOME|/home/[^/\\s]+|/root)/\\.ssh/(id_|.*_key|authorized_keys)",

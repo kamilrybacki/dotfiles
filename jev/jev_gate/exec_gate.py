@@ -3,12 +3,19 @@
 Order: deterministic deny/ask rules -> trusted read-only fast path -> one
 Jev request for the residual. Jev can escalate to ask/deny, never to allow.
 Any Jev failure defers to the harness's normal permission flow (fail open).
+
+In the default `advisory` mode only deny rules block; ask rules are logged and
+the Jev request runs in a detached background process (no added latency),
+so the gate never interrupts an auto-mode session. `enforce` restores the
+synchronous ask/deny behaviour.
 """
 
 from __future__ import annotations
 
 import json
 import re
+import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -84,20 +91,56 @@ def ask_jev(command: str, cwd: str, policy: Policy, timeout: float) -> Verdict:
     return Verdict("undecided", f"Jev: safe (review={review:.2f} dangerous={dangerous:.2f})")
 
 
-def decide(payload: dict, policy: Policy, timeout: float) -> tuple[Verdict, str]:
-    """Return (verdict, source) where source is rule | trusted | jev | jev-error | skip."""
+def spawn_audit(payload: dict, harness: str) -> None:
+    """Ask Jev in a detached process so the hook returns immediately (advisory mode)."""
+    try:
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "jev_gate.cli", "--harness", harness, "audit"],
+            stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True, cwd=str(Path(__file__).resolve().parent.parent),
+        )
+        proc.stdin.write(json.dumps(payload).encode())
+        proc.stdin.close()
+    except OSError:
+        pass
+
+
+def decide(payload: dict, policy: Policy, timeout: float, harness: str = "unknown") -> tuple[Verdict, str]:
+    """Return (verdict, source); source is rule | rule-advisory | trusted | jev | jev-audit | jev-error | skip."""
     command = extract_command(payload)
     if command is None:
         return Verdict("undecided"), "skip"
     verdict = evaluate(command, policy)
-    if verdict.decision in ("deny", "ask"):
+    if verdict.decision == "deny":
         return verdict, "rule"
-    if verdict.decision == "trusted":
-        return verdict, "trusted"
+    enforce = policy.mode == "enforce"
+    if verdict.decision == "ask":
+        return (verdict, "rule") if enforce else (Verdict("undecided", f"would ask: {verdict.reason}"), "rule-advisory")
+    if verdict.decision == "trusted" or policy.mode == "off":
+        return verdict, "trusted" if verdict.decision == "trusted" else "skip"
+    if not enforce:
+        spawn_audit(payload, harness)
+        return Verdict("undecided", "Jev verdict logged in background"), "jev-audit"
     try:
         return ask_jev(command, payload.get("cwd") or ".", policy, timeout), "jev"
     except client.JevError as exc:
         return Verdict("undecided", f"Jev unavailable: {exc}"), "jev-error"
+
+
+def audit(payload: dict, policy: Policy, harness: str, timeout: float) -> None:
+    """Background half of advisory mode: ask Jev, log what it WOULD have decided."""
+    command = extract_command(payload)
+    if command is None:
+        return
+    started = time.monotonic()
+    try:
+        verdict, source = ask_jev(command, payload.get("cwd") or ".", policy, timeout), "jev-advisory"
+    except client.JevError as exc:
+        verdict, source = Verdict("undecided", f"Jev unavailable: {exc}"), "jev-error"
+    decision_log.record(
+        "exec", harness=harness, decision=verdict.decision, source=source, reason=verdict.reason,
+        latency_ms=round((time.monotonic() - started) * 1000), command=redact(command)[:300],
+    )
 
 
 def hook_output(verdict: Verdict) -> dict | None:
@@ -114,8 +157,8 @@ def hook_output(verdict: Verdict) -> dict | None:
 
 def run(payload: dict, policy: Policy, harness: str, timeout: float) -> dict | None:
     started = time.monotonic()
-    verdict, source = decide(payload, policy, timeout)
-    if source != "skip":
+    verdict, source = decide(payload, policy, timeout, harness)
+    if source not in ("skip", "jev-audit"):
         decision_log.record(
             "exec",
             harness=harness,

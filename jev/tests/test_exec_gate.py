@@ -1,9 +1,54 @@
 import json
+from dataclasses import replace
 
 from jev_gate import exec_gate
 from jev_gate.policy import load_policy
 
-POLICY = load_policy()
+POLICY = replace(load_policy(), mode="enforce")
+ADVISORY = replace(POLICY, mode="advisory")
+
+
+def test_default_mode_is_advisory(monkeypatch):
+    monkeypatch.delenv("JEV_EXEC_MODE", raising=False)
+    assert load_policy().mode == "advisory"
+
+
+def test_env_overrides_mode(monkeypatch):
+    monkeypatch.setenv("JEV_EXEC_MODE", "enforce")
+    assert load_policy().mode == "enforce"
+
+
+def test_advisory_never_asks_and_audits_in_background(fake_jev, monkeypatch):
+    spawned = []
+    monkeypatch.setattr(exec_gate, "spawn_audit", lambda payload, harness: spawned.append(payload))
+    fake_jev.answers = verdict(review=1.0)
+    assert exec_gate.run(bash("npm publish"), ADVISORY, "t", 1) is None
+    assert exec_gate.run(bash("kubectl delete pod x"), ADVISORY, "t", 1) is None
+    assert len(spawned) == 1 and fake_jev.requests == []
+
+
+def test_advisory_still_denies_on_hard_rules(fake_jev):
+    out = exec_gate.run(bash("cat ~/.ssh/id_rsa"), ADVISORY, "t", 1)
+    assert out["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+
+def test_audit_logs_would_be_verdict(fake_jev, tmp_path):
+    fake_jev.answers = verdict(review=1.0)
+    exec_gate.audit(bash("npm publish"), POLICY, "claude", 1)
+    entry = json.loads((tmp_path / "decisions.jsonl").read_text().splitlines()[-1])
+    assert entry["source"] == "jev-advisory" and entry["decision"] == "ask"
+
+
+def test_spawn_audit_runs_detached_process(fake_jev, tmp_path, monkeypatch):
+    import time
+    fake_jev.answers = verdict(review=1.0)
+    exec_gate.spawn_audit(bash("npm publish"), "bg")
+    log = tmp_path / "decisions.jsonl"
+    for _ in range(50):
+        if log.exists() and "jev-advisory" in log.read_text():
+            break
+        time.sleep(0.1)
+    assert "jev-advisory" in log.read_text()
 
 
 def bash(command, cwd="/tmp"):

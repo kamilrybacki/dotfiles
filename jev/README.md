@@ -55,6 +55,14 @@ capped at 6000 chars.
 
 ## Tuning
 
+- `policy.json` `mode` (or env `JEV_EXEC_MODE`):
+  - `advisory` (default): only `deny` rules block. `ask` rules and Jev verdicts
+    are only logged (`source: rule-advisory` / `jev-advisory`), and Jev runs in
+    a detached background process. There is no added latency and no prompts,
+    which keeps auto mode usable.
+  - `enforce`: `ask` rules prompt, and Jev can ask or deny synchronously
+    (~0.7s per command).
+  - `off`: `deny` rules only, with no Jev call.
 - `policy.json`: `thresholds` (Jev probabilities → ask/deny), deny/ask regexes,
   `trusted_commands`.
 - `JEV_MODEL` pins a version (e.g. `jev-1.13.0`) once thresholds are tuned.
