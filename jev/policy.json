@@ -1,0 +1,106 @@
+{
+  "_comment": "Programmable exec policy (Jev Engineering \u00a7IV-A). deny/ask are regexes over the raw command. trusted_commands skip the Jev call when EVERY pipeline segment starts with one of them and nothing is redirected. The gate never grants 'allow' - it only tightens the harness's own permission flow.",
+  "deny": [
+    {
+      "pattern": "(~|\\$HOME|/home/[^/\\s]+|/root)/\\.ssh/(id_|.*_key|authorized_keys)",
+      "reason": "touches SSH private keys"
+    },
+    {
+      "pattern": "\\.vault-token\\b",
+      "reason": "reads the local Vault token"
+    },
+    {
+      "pattern": "/opt/vault/init-keys\\.json",
+      "reason": "touches Vault unseal keys"
+    },
+    {
+      "pattern": "(\\.codex|\\.hermes|\\.claude)/(auth\\.json|\\.credentials\\.json)",
+      "reason": "touches an agent OAuth credential file"
+    },
+    {
+      "pattern": "(^|[\\s/'\"=])\\.env(\\.(?!example|sample|template|dist)[\\w.-]+)?(?=$|[\\s'\"])",
+      "reason": "touches a .env secrets file"
+    },
+    {
+      "pattern": "\\brm\\s+(-[a-zA-Z]*[rf][a-zA-Z]*\\s+)+(/|~|\\$HOME)(\\s|$)",
+      "reason": "recursive delete of / or $HOME"
+    },
+    {
+      "pattern": "\\b(mkfs(\\.\\w+)?|wipefs)\\b|\\bdd\\s+.*of=/dev/",
+      "reason": "destroys a block device"
+    }
+  ],
+  "ask": [
+    {
+      "pattern": "\\b(curl|wget)\\b[^|]*\\|\\s*(sudo\\s+)?(ba|z)?sh\\b",
+      "reason": "pipes a download into a shell"
+    },
+    {
+      "pattern": "\\bgit\\s+push\\b.*(--force\\b|-f\\b|--force-with-lease).*\\b(main|master)\\b",
+      "reason": "force-push to a default branch"
+    },
+    {
+      "pattern": "\\bkubectl\\s+(delete|drain|cordon|replace\\s+--force)\\b",
+      "reason": "destructive kubectl verb"
+    },
+    {
+      "pattern": "\\bhelm\\s+(uninstall|delete)\\b",
+      "reason": "removes a helm release"
+    },
+    {
+      "pattern": "\\bvault\\s+(kv\\s+)?(delete|destroy|write|put)\\b|/v1/secret/.*-X\\s*(POST|PUT|DELETE)",
+      "reason": "writes or deletes a Vault secret"
+    },
+    {
+      "pattern": "\\b(shutdown|reboot|poweroff)\\b|\\bsystemctl\\s+(stop|disable|mask)\\s+(k3s|vault|docker|caddy)",
+      "reason": "stops core homelab infrastructure"
+    }
+  ],
+  "trusted_commands": [
+    "ls",
+    "pwd",
+    "cat",
+    "head",
+    "tail",
+    "wc",
+    "grep",
+    "rg",
+    "fd",
+    "find",
+    "tree",
+    "stat",
+    "file",
+    "du",
+    "df",
+    "echo",
+    "printf",
+    "true",
+    "which",
+    "type",
+    "date",
+    "jq",
+    "yq",
+    "sort",
+    "uniq",
+    "cut",
+    "tr",
+    "diff",
+    "column",
+    "basename",
+    "dirname",
+    "realpath",
+    "readlink",
+    "sha256sum",
+    "md5sum",
+    "graft",
+    "ast-grep",
+    "sg",
+    "fff"
+  ],
+  "thresholds": {
+    "deny_dangerous": 0.9,
+    "ask_dangerous": 0.5,
+    "ask_review": 0.7,
+    "ask_secrets": 0.8
+  }
+}
