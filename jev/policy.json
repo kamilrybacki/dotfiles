@@ -14,6 +14,10 @@
       "reason": "touches Vault unseal keys"
     },
     {
+      "pattern": "\\.config/jev/api_key\\b",
+      "reason": "reads the Jev API key file"
+    },
+    {
       "pattern": "(\\.codex|\\.hermes|\\.claude)/(auth\\.json|\\.credentials\\.json)",
       "reason": "touches an agent OAuth credential file"
     },

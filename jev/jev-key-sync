@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copy the Jev API key from Vault (secret/homelab/typesafe/jev) into
 # ~/.config/jev/api_key (0600). The value is never printed.
-# Usage: jev-key-sync [field]   (default: first field of the secret)
+# Usage: jev-key-sync [field]   (default: api_key, else key, else token)
 set -euo pipefail
 
 addr="${VAULT_ADDR:-http://127.0.0.1:8200}"
@@ -14,7 +14,8 @@ json="$(curl -fsS -H "X-Vault-Token: $token" "$addr/v1/secret/data/homelab/types
 if [[ -n "$field" ]]; then
   filter=".data.data[\"$field\"]"
 else
-  filter='.data.data | to_entries | first | .value'
+  # Same precedence as the cellarette ExternalSecret template: api_key, key, token.
+  filter='.data.data | (.api_key // .key // .token)'
 fi
 
 mkdir -p "$(dirname "$out")"

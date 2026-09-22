@@ -39,6 +39,7 @@ def test_redact_keeps_ordinary_commands():
     "source .env.local",
     "rm -rf ~",
     "jq . ~/.codex/auth.json",
+    "cat ~/.config/jev/api_key",
 ])
 def test_deny_rules(command):
     assert evaluate(command, POLICY).decision == "deny"
