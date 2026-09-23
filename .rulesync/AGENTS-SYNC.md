@@ -18,6 +18,7 @@ agent's native file from it.
   30-codex-nav.md            targets: codexcli                  (Codex only)
   05-hermes-conventions.md   targets: hermesagent               (Hermes only)
   40-hermes-facts.md         targets: hermesagent               (Hermes only)
+  50-jev-decisions.md        targets: claudecode, codexcli, hermesagent (shared; see jev/README.md)
 ```
 
 Every rule is `root: true`, so all rules for one target combine into a single
