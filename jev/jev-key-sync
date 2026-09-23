@@ -23,3 +23,10 @@ umask 077
 jq -er "$filter" <<<"$json" >"$out.tmp"
 mv "$out.tmp" "$out"
 echo "wrote $out ($(wc -c <"$out") bytes)"
+
+# Same key as a systemd EnvironmentFile for local services (e.g. the lw-main
+# cellarette's jev__ask tool, which authenticates with env:TYPESAFE_API_KEY).
+env_out="$(dirname "$out")/jev.env"
+printf 'TYPESAFE_API_KEY=%s\n' "$(tr -d '[:space:]' <"$out")" >"$env_out.tmp"
+mv "$env_out.tmp" "$env_out"
+echo "wrote $env_out"
