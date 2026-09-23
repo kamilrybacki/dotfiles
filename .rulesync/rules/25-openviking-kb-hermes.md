@@ -10,6 +10,11 @@ globs: ["**/*"]
   past decisions, infra facts, and your own research-cron output. Access via the cellarette
   `openviking__*` tools (in your `hermes-devops` profile: search, read, grep, glob, list, tree,
   find, write, add_resource, remember, forget, health).
+- **START HERE for any homelab question:**
+  `viking://resources/homelab-knowledge/homelab-canonical-state.md` is the SINGLE canonical
+  description of the homelab. Your `homelab-knowledge-refresh` cron (06:15 UTC daily) re-verifies it
+  against live systems and rewrites whatever drifted, so it is the freshest record that exists.
+  Read it before answering; never keep a second copy of those facts, and fix errors in that file.
 - **Consult it EARLY** on any homelab / infra / research task — alongside your Obsidian research
   vault and memory, and BEFORE web tools or trial-and-error. `openviking__search "<topic>"`
   (semantic) or `openviking__grep` / `openviking__glob` for exact strings. A quick lookup often
