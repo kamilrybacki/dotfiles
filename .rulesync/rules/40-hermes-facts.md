@@ -10,6 +10,14 @@ globs: ["**/*"]
   chart you must ALSO add an ArgoCD Application to the SEPARATE repo
   `kamilandrzejrybacki-inc/argocd-apps` at `apps/<name>.yaml` (ArgoCD auto-syncs `main`,
   prune+selfHeal). A helm commit alone deploys nothing without that app entry.
+- **Git forge = self-hosted Forgejo (since 2026-09-25).** The `kamilandrzejrybacki-inc`
+  org moved off GitHub; the GitHub org is ARCHIVED (read-only) — never push there and never
+  use `gh`/`gh__run` for org repos (both still fine for personal `kamilrybacki` repos).
+  Clone/push over the LAN endpoint `http://192.168.0.115:3000/kamilandrzejrybacki-inc/<repo>.git`
+  (your git credential helper covers it as `homelab-agents`); UI at
+  `https://git.kamilandrzejrybacki.dpdns.org`. Default branches are protected: push is
+  allowed, force-push and branch deletion are not. PRs go through the Forgejo API
+  (`/api/v1/repos/<org>/<repo>/pulls`), not GitHub.
 - **Ansible, not ArgoCD, owns:** the edge (Caddy `secure-homelab-access` role — a public
   host = add the route + Authelia forward-auth snippet, then an operator runs the caddy
   role), the few k8s Secrets ESO cannot deliver (`k8s-secrets` role: vault-mcp-token, Codex/Claude

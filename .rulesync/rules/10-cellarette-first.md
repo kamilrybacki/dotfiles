@@ -19,7 +19,7 @@ globs: ["**/*"]
 | Homelab/project knowledge base (gotchas, past decisions, research) | `openviking__*` |
 | Step-by-step reasoning scratchpad | `sequential_thinking__*` |
 | Headless browser, web scraping, JS sites | `lightpanda__*` |
-| Run GitHub CLI (issues/PRs/repos) | `gh__help` then `gh__run` |
+| Run GitHub CLI (issues/PRs/repos) — **personal `kamilrybacki` repos only**; the `kamilandrzejrybacki-inc` org lives on self-hosted Forgejo (`git.kamilandrzejrybacki.dpdns.org`), its GitHub copy is archived | `gh__help` then `gh__run` |
 | Run Codex CLI from inside Claude | `codex__help` then `codex__run` |
 
 **Rules:**
