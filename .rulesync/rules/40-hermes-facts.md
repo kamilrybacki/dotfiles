@@ -34,14 +34,14 @@ globs: ["**/*"]
   facts is what made them rot through September 2026 — if a fact is missing or wrong, fix it
   THERE, not here. What stays in this file is only what is specific to you as an agent.
 - **The two facts you must not get wrong, repeated here because they are load-bearing:**
-  the k3s datastore is external Postgres on lw-nas (`192.168.0.115:5432`, kine) and lw-nas is a
+  the k3s datastore is external Postgres on lw-db (`192.168.0.115:5432`, kine) and lw-db is a
   hard SPOF — if the NAS is down, the API and every hosted service are down, CP-HA
   notwithstanding. On a cluster-wide outage, suspect the NAS first. And you run inside the
   cluster on lw-c2.
 - **SSH to homelab hosts = the cellarette `ssh__run` tool. NEVER a local ssh.** Your own pod
   has NO ssh client and you CANNOT install one (you run as uid 1001, no sudo — do not try apt,
   do not look for `/usr/bin/ssh`, `~/.ssh`, or a local key; they are irrelevant). To run a
-  command on lw-main / lw-c1 / lw-c2 / lw-c3 / lw-nas / **lw-pi**, call the `ssh__run` tool with
+  command on lw-main / lw-c1 / lw-c2 / lw-c3 / lw-db / **lw-pi**, call the `ssh__run` tool with
   the host as the first arg and **NO `cwd`** (a `cwd` from your filesystem does not exist in the
   cellarette pod). Example: `ssh__run` with `["lw-pi", "docker ps -a && df -h /mnt/media"]`.
   The ssh client, key, and host config all live in the cellarette pod — `ssh__run` IS your
@@ -49,7 +49,7 @@ globs: ["**/*"]
   `ssh__run` without cwd. **lw-pi (192.168.0.109) is a standalone Raspberry Pi, NOT a k8s node**,
   so kubectl cannot reach it — always use `ssh__run`.
 - **NAS auto-recovery, because it changes how you react to an outage:** a watchdog on lw-pi
-  pings lw-nas every 2 minutes and, on down, fires Wake-on-LAN and alerts the operator via
+  pings lw-db every 2 minutes and, on down, fires Wake-on-LAN and alerts the operator via
   ntfy.sh, so an unattended NAS loss self-recovers in roughly 4 minutes. The operator also has
   a `homelab-recover` script on lw-main and off-NAS `k3s_state` backups every 6h. You cannot
   run any of it — just never assume a brief cluster blip is permanent.
