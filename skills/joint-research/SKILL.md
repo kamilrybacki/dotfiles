@@ -4,13 +4,13 @@ description: >
   Two-agent joint research: Claude Code AND the Hermes homelab agent research the same
   topic in parallel from complementary angles, then Claude merges both into a single
   report. Use when the user invokes /joint-research or asks for research "with Hermes",
-  "joint research", or "both of you look into". Requires cellarette discord__* +
+  "joint research", or "both of you look into". Requires cellarette paperclip__* +
   exa__* tools and a live Hermes gateway.
 metadata:
   version: "1.0.0"
   last_updated: "2026-07-14"
   status: active
-  requires: "cellarette MCP (discord__*, exa__*), Hermes agent live in ns hermes"
+  requires: "cellarette MCP (paperclip__*, exa__*), Hermes (Paperclip CEO) live in ns hermes"
   related_skills:
     - deep-research
 ---
@@ -41,9 +41,9 @@ Split the questions into two **complementary** briefs (not copies):
 - Hermes brief: depth on the homelab/agent-relevant angle, its vault + memory recall,
   its independent web pass on the subquestions Claude is NOT covering.
 
-Send Hermes its brief via `discord__discord_send` to #hermes
-(channelId `1525886749627125821`), starting with the mention
-`<@1525870647501262949>`. The message MUST include:
+Send Hermes its brief as a Paperclip issue: `paperclip__paperclipListAgents` to find the
+`hermes` agent id, then `paperclip__paperclipCreateIssue` titled `JOINT-RESEARCH <run-id>`
+and assigned to it (status `todo`) — that wakes Hermes. The description MUST include:
 - the run id and topic;
 - its subquestions (bulleted, concrete);
 - deliverable format: markdown with `## Findings`, `## Sources` (URLs), `## Confidence
@@ -63,12 +63,12 @@ Do NOT wait for Hermes before starting. Work your brief:
   flag anything single-sourced.
 
 ### 4. Collect Hermes' findings
-Poll `discord__discord_read_messages` on #hermes (limit 10-20) every ~2-3 minutes
+Poll `paperclip__paperclipListComments` on that issue every ~2-3 minutes
 (use waiting patterns available in your environment; do not busy-loop). Look for the
 completion marker or a substantive reply mentioning the run id. Hermes may split long
 answers across messages and may reply inside an auto-thread — if the channel shows a
 thread stub, read the thread channelId too.
-- **Timeout**: after ~25 minutes without the marker, send ONE nudge mention. After
+- **Timeout**: after ~25 minutes without the marker, post ONE nudge comment. After
   ~10 more minutes, proceed solo and mark the report "Hermes: no response —
   single-agent findings only".
 - If Hermes replies it lacks a tool/capability, note it, fold its partial answer in.
@@ -99,7 +99,7 @@ run: <run-id> · date · agents: Claude Code + Hermes
 
 Then:
 - send the file to the user (SendUserFile if available);
-- post a ≤8-line summary to #hermes crediting both agents, ending with
+- post a ≤8-line summary as a comment on the issue crediting both agents, ending with
   `JOINT-RESEARCH <run-id> PUBLISHED`;
 - if the user wants it in the knowledge vault, use `obsidian__obsidian_append_content`
   to add it under `research/` (Quartz publishes that folder).
@@ -110,4 +110,4 @@ Then:
 - Hermes' findings are evidence, not gospel — verify anything surprising before it
   enters "Key findings" above the unverified tier.
 - One nudge max; a hung Hermes must not hang the skill.
-- Keep the Discord brief self-contained — Hermes has no access to this conversation.
+- Keep the issue brief self-contained — Hermes has no access to this conversation.
