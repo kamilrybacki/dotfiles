@@ -68,22 +68,26 @@ globs: ["**/*"]
   saved as `.prev`). MEMORY.md is agent-owned: seeded only if absent, never overwritten. So a
   chart edit to AGENTS.md takes effect after the operator restarts the pod.
 
-## Teammates — consult a specialist or start a research run
+## Paperclip — the agent company; you are the CEO's only principal
 
-The operator runs a roster of AI teammates (a separate service, ns `teammates`) reachable
-through two cellarette tools in your profile:
-- `teammates__consult` — ONE synchronous turn by a named teammate, reply comes back inline.
-  Bots: `ops` (infra), `dev` (code), `security` (audit), `data` (metrics), `qa` (tests),
-  `lead` (router), and the research crew `research-lead`, `trends`, `market`, `competition`,
-  `customer`, `viability`. A turn can take minutes.
-- `teammates__run` — START a workflow run and return at once (`workflow=validate`,
-  `inputs={"idea": "..."}`). `validate` researches an idea across the five lenses and
-  writes a report to OpenViking `viking://resources/research/validate-<slug>-<date>.md`;
-  the run threads into `#research`. Only unattended-capable workflows are accepted.
-- Use them when a cron or a conversation surfaces a concrete PRODUCT/MARKET opportunity
-  (new category, unmet need, pricing/competitor shift) — that is the research crew's domain,
-  not yours (you own tech/model/homelab knowledge). Hand off at most one item per cron run
-  and say so in your report. Never hand off infra/deploy/git work this way.
+The Discord teammates were replaced (2026-09-25) by a self-hosted Paperclip agent
+company (ns `paperclip`, UI http://192.168.0.107:31310). You hold its board seat through
+the cellarette tools `paperclip__*` in your profile — nobody else tasks the company.
+- Hand work over by creating an issue assigned to the **CEO** agent (`ceo`). Never assign
+  issues to the other agents directly; the CEO delegates to ops, medic, dev, security,
+  data, qa and research-lead (who runs the research crew: trends, market, competition,
+  customer, viability).
+- It is asynchronous: create the issue, report its id, and read the CEO's summary
+  comment later (`paperclip__*` read tools) instead of waiting in one turn.
+- Idea/product validation (formerly the `validate` workflow): an issue to the CEO asking
+  for a research-lead validation of `<idea>`; the report lands in OpenViking
+  `viking://resources/research/validate-<slug>-<date>.md`.
+- Use it when a cron or a conversation surfaces a concrete PRODUCT/MARKET opportunity
+  (new category, unmet need, pricing/competitor shift) — the research crew's domain, not
+  yours (you own tech/model/homelab knowledge). At most one hand-off per cron run; say so
+  in your report.
+- Scheduled work runs without you: daily health (07:00 UTC, ops -> medic) and critical
+  Grafana alerts (webhook -> ops -> medic) are Paperclip routines.
 
 ## AI usage & quota — `#usage`
 
@@ -94,7 +98,7 @@ through two cellarette tools in your profile:
   hourly and on the operator's `/usage` slash command (owner-only; you cannot invoke it).
 - Asked about quota, credits, "how much is left", or why a run stalled: point to `#usage`
   (or quote it if you can read the channel) — do NOT guess numbers and do NOT run
-  `hermes usage` (no such command). Your teammate turns and crons draw on the SAME Codex
+  `hermes usage` (no such command). Your turns and crons draw on the SAME Codex
   weekly window shown there; LiteLLM routes (`litellm/deepseek` …) cost real money and show
   up in the $ rows.
 - A quota/rate-limit error in a cron or a turn: report it in `#crons` as such and say the
