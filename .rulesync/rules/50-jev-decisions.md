@@ -25,7 +25,7 @@ Treat context, tools, permissions and routing as per-turn decisions.
   area-specific gotcha belongs in a fragment (with a precise `when:`), not in this
   global file.
 - **Typed decisions on demand:** `jev-gate ask` (stdin `{"state", "questions"}`) on
-  workstations, or the cellarette tool **`jev__ask`** (Hermes, teammates, any MCP client).
+  workstations, or the cellarette tool **`jev__ask`** (Hermes, Paperclip agents, any MCP client).
 - **Sensitivity routing:** `jev-gate route --task … --file …` returns `open` /
   `standard` / `restricted`. Secrets, `.env`, infra config and network topology are
   **restricted**: they go to first-party frontier models only, never to cheap or open
