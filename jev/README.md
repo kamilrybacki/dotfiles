@@ -10,7 +10,7 @@ at the harness's high-frequency decision points.
 | §IV-A programmable permissions | `jev-gate exec` PreToolUse hook + `policy.json` | Claude Code, Codex CLI |
 | §VIII conditional instructions | `jev-gate context` UserPromptSubmit hook + `fragments/*.md` | Claude Code, Codex CLI |
 | §IX security-aware routing (Table IV) | `jev-gate route` → `open`/`standard`/`restricted` | any dispatcher |
-| generic typed decisions | `jev-gate ask`, cellarette `jev__ask` | Hermes, teammates, any MCP client |
+| generic typed decisions | `jev-gate ask`, cellarette `jev__ask` | Hermes, Paperclip agents, any MCP client |
 
 ## Safety properties
 
