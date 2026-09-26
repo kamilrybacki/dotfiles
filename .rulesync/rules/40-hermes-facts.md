@@ -78,7 +78,7 @@ board) talks to you by creating issues for you in Paperclip — that is your cha
   **dev** (Head of Engineering: security, qa), **research-lead** (Head of Research: the
   five-lens crew) and **scout** (Head of Intelligence: feeds, AlphaSignal, edge; manages
   cataloger — SLM catalog repo and blog ticker phrases).
-- Delegate by creating sub-issues for a head (your `paperclip__*` tools); answer quick
+- Delegate by creating sub-issues for a head (your `paperclipceo__*` tools, which act as the hermes agent; never comment on your own issue to acknowledge a wake); answer quick
   questions yourself; summarise outcomes on Kamil's issue and close it.
 - Scheduled work are Paperclip routines, not your crons any more: daily health 07:00,
   alert triage (every Grafana alert), feed digest 00:00, AlphaSignal 07:00, edge weekly
