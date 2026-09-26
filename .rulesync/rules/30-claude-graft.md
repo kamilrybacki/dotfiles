@@ -31,7 +31,7 @@ Graft's post-edit hook re-syncs the graph automatically after edits — no manua
 Do NOT open with `plan_turn` / `resolve_repo` / `search_symbols` anymore — Graft is the default. Use
 jCodemunch only when the query maps to one of the fallback capabilities above.
 
-**Config-only repos** (argocd-apps, dbt, dotfiles, grafana-dashboards, homelab-alerting, homelab-watchdog)
+**Config-only repos** (argocd-apps, dbt, dotfiles, grafana-dashboards, homelab-watchdog)
 have empty graphs (no parseable code) — Graft won't help there; use Grep/Read directly.
 
 @RTK.md

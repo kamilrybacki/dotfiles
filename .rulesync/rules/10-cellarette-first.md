@@ -13,7 +13,7 @@ globs: ["**/*"]
 | Read/write secrets | `vault__*` |
 | Query metrics, logs, dashboards | `grafana__*` |
 | Inspect ArgoCD apps, k8s state | `argocd__*` |
-| Search personal docs/notes | `obsidian__*`, `distillery__*` |
+| Search personal docs/notes | `obsidian__*` |
 | Look up library/framework docs | `context7__*` |
 | Cross-session knowledge graph | `memory__*` |
 | Homelab/project knowledge base (gotchas, past decisions, research) | `openviking__*` |
