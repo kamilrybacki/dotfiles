@@ -23,8 +23,10 @@ globs: ["**/*"]
   `viking://resources/session-knowledge/` (mined cross-session lessons),
   `viking://resources/research/` (where your research crons write their findings).
 - **Contribute back** durable, reusable lessons with `openviking__write` to `viking://resources/…`
-  — **REDACT secrets first** (never write tokens/keys/passwords). Your research crons already do
-  this for their findings; for interactive work it's optional.
+  — **REDACT secrets first** (never write tokens/keys/passwords). MANDATORY, for crons AND
+  interactive work: anything durable you put in your own memory (MEMORY.md, holographic store,
+  DREAMS.md) that another agent would need goes to OpenViking in the same run. Your local memory
+  is private to you; OpenViking is what the Paperclip company and Claude/Codex read.
 - If `openviking__*` isn't in your profile or `openviking__health` is unhealthy, skip silently —
   never block a task on the KB being reachable.
 - **Auth (infra fact):** OV's `/mcp` accepts only the OpenViking ROOT key; the in-cluster caddy
