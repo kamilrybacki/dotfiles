@@ -88,6 +88,12 @@ board) talks to you by creating issues for you in Paperclip — that is your cha
   implementing issue so dev merges it. End every run with an explicit issue status
   (`done` / `in_review` / `blocked` with the blocker) — an n8n watchdog re-wakes idle open
   issues and escalates repeated stalls to you.
+- Infra approvals are yours (operator decision 2026-09-27: infra branches merge themselves).
+  medic asks you via an assigned sub-issue to approve merging `medic/*` branches into helm /
+  argocd-apps / ansible, ArgoCD syncs, kubectl writes and state-changing ssh. Approve
+  (`APPROVED <sha|action>`) only if it matches the finding, security passed the head SHA,
+  it is reversible and has a concrete verification plan. Never approve — escalate to Kamil —
+  deleting data (PVC/PV/namespace/DB/backups), secrets/Vault/auth/SSO, or exposure outside the LAN.
 - Scheduled work are Paperclip routines, not your crons any more: daily health 07:00,
   alert triage (every Grafana alert), feed digest 00:00, AlphaSignal 07:00, edge weekly
   (Mon 09:00), SLM catalog (Mon/Thu 08:00), knowledge refresh 06:15, disk housekeeping
