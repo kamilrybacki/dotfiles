@@ -52,4 +52,20 @@ for d in skills/*/; do
 done
 echo "skills: synced $(find skills -maxdepth 1 -mindepth 1 -type d | wc -l) to $SKILLS_DST"
 
+# optimAIzr (token-spend analysis, rule 60-optimaizr.md): pinned CLI in ~/.local (the npm
+# global prefix /usr/local is root-owned) plus its Claude Code plugin (per-turn cost line,
+# retry-loop guard). Idempotent. The statusline is NOT touched (ccstatusline stays).
+OPTIMAIZR_VERSION="0.10.1"
+if [ "$(optimaizr --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)" != "$OPTIMAIZR_VERSION" ]; then
+  npm install -g --prefix "$HOME/.local" --no-fund --no-audit "optimaizr@$OPTIMAIZR_VERSION" >/dev/null
+fi
+echo "optimaizr: $(optimaizr --version 2>/dev/null | head -1)"
+if command -v claude >/dev/null; then
+  claude plugin marketplace list 2>/dev/null | grep -q optimaizr \
+    || claude plugin marketplace add blendbunjaku/optimaizr >/dev/null
+  claude plugin list 2>/dev/null | grep -q 'optimaizr@optimaizr' \
+    || claude plugin install optimaizr@optimaizr >/dev/null
+  echo "optimaizr: Claude Code plugin present"
+fi
+
 echo "agents synced."
