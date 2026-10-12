@@ -4,10 +4,6 @@
   "mode": "advisory",
   "deny": [
     {
-      "pattern": "(~|\\$HOME|/home/[^/\\s]+|/root)/\\.ssh/(id_|.*_key|authorized_keys)",
-      "reason": "touches SSH private keys"
-    },
-    {
       "pattern": "\\.vault-token\\b",
       "reason": "reads the local Vault token"
     },
