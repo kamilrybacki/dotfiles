@@ -11,10 +11,10 @@ description: >
 # Paperclip from Claude Code
 
 Paperclip (`https://paperclip.kamilandrzejrybacki.dpdns.org`, company prefix `HOM`) runs the
-homelab's agents. You reach it through the MCP server **`paperclip`** (cellarette profile
-`operator`): tools `paperclip__paperclip*` (board seat — you act as the operator) and
+homelab's agents. You reach it through the MCP server **`cellarette-operator`** (cellarette profile
+`operator`, edge `/mcp?profile=operator`): tools `paperclipceo__paperclip*` (board seat — you act as the operator) and
 `n8n__cluster_snapshot` (deterministic health snapshot). If those tools are missing, tell
-the user to restart Claude Code (MCP tools load at session start).
+the user to add MCP server `cellarette-operator` (profile `operator`) and restart Claude Code (MCP tools load at session start).
 
 ## Commands
 
