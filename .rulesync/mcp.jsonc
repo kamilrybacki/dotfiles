@@ -13,6 +13,7 @@
     // IN-CLUSTER cellarette's profile; locally there is no `workspace` profile and
     // it yields ZERO tools.
     "graft": { "command": "graft", "args": ["mcp"] },
+    "cellarette-operator": { "targets": ["claudecode"], "type": "http", "url": "https://cellarette-mcp.kamilandrzejrybacki.dpdns.org/mcp?profile=operator", "headers": { "Authorization": "Bearer ${CELLARETTE_MCP_TOKEN}" } },
     "cellarette": { "type": "http", "url": "http://localhost:8788/mcp?profile=default" }
   }
 }

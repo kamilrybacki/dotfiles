@@ -4,13 +4,13 @@ description: >
   Two-agent joint research: Claude Code AND the Hermes homelab agent research the same
   topic in parallel from complementary angles, then Claude merges both into a single
   report. Use when the user invokes /joint-research or asks for research "with Hermes",
-  "joint research", or "both of you look into". Requires cellarette paperclip__* +
+  "joint research", or "both of you look into". Requires cellarette paperclipceo__* +
   exa__* tools and a live Hermes gateway.
 metadata:
   version: "1.0.0"
   last_updated: "2026-07-14"
   status: active
-  requires: "cellarette MCP (paperclip__*, exa__*), Hermes (Paperclip CEO) live in ns hermes"
+  requires: "cellarette MCP (paperclipceo__*, exa__*), Hermes (Paperclip CEO) live in ns hermes"
   related_skills:
     - deep-research
 ---
@@ -41,8 +41,8 @@ Split the questions into two **complementary** briefs (not copies):
 - Hermes brief: depth on the homelab/agent-relevant angle, its vault + memory recall,
   its independent web pass on the subquestions Claude is NOT covering.
 
-Send Hermes its brief as a Paperclip issue: `paperclip__paperclipListAgents` to find the
-`hermes` agent id, then `paperclip__paperclipCreateIssue` titled `JOINT-RESEARCH <run-id>`
+Send Hermes its brief as a Paperclip issue: `paperclipceo__paperclipListAgents` to find the
+`hermes` agent id, then `paperclipceo__paperclipCreateIssue` titled `JOINT-RESEARCH <run-id>`
 and assigned to it (status `todo`) — that wakes Hermes. The description MUST include:
 - the run id and topic;
 - its subquestions (bulleted, concrete);
@@ -63,7 +63,7 @@ Do NOT wait for Hermes before starting. Work your brief:
   flag anything single-sourced.
 
 ### 4. Collect Hermes' findings
-Poll `paperclip__paperclipListComments` on that issue every ~2-3 minutes
+Poll `paperclipceo__paperclipListComments` on that issue every ~2-3 minutes
 (use waiting patterns available in your environment; do not busy-loop). Look for the
 completion marker or a substantive reply mentioning the run id. Hermes may split long
 answers across messages and may reply inside an auto-thread — if the channel shows a
