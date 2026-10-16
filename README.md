@@ -121,3 +121,26 @@ cellarette-token-sync --stdin                          # anywhere else: paste it
 
 The bootstrap prints whatever is left to do (token, Jev key, PATH, Codex env
 var). Details: [`.rulesync/AGENTS-SYNC.md`](.rulesync/AGENTS-SYNC.md).
+
+No SSH key on the machine? Clone over HTTPS instead
+(`git clone https://github.com/kamilrybacki/dotfiles.git`, after `gh auth login`
+and `gh auth setup-git`).
+
+### Windows
+
+Supported through WSL2 only; the bootstrap refuses Git Bash / MSYS. Everything
+runs inside the distro and Claude Code is started from the WSL shell:
+
+```bash
+wsl --install -d Ubuntu                      # PowerShell, once; then open Ubuntu
+sudo apt install -y git curl jq python3 unzip
+curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash   # then reopen the shell
+nvm install --lts
+curl -fsSL https://claude.ai/install.sh | bash   # Claude Code, Linux build
+# gh: https://github.com/cli/cli/blob/trunk/docs/install_linux.md
+```
+
+Keep the clone in the Linux filesystem (`~/Code/dotfiles`, not `/mnt/c/...`).
+WSL appends the Windows `PATH`; the bootstrap stops if `claude`, `node`, `npm`
+or `python3` only resolve to a Windows binary under `/mnt/`. Logins (`claude`,
+`gh`) are separate from the Windows ones and must be done inside WSL.
