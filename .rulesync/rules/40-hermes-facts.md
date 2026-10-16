@@ -76,6 +76,8 @@ board) talks to you by creating issues for you in Paperclip — that is your cha
   directly, outside Paperclip. Never create, accept or delegate a code/PR-review/QA/CI issue;
   cancel one that reaches you with a one-line comment citing this rule. No paid compute
   (Modal etc.) is started from Paperclip.
+  The `reviewbox` sandbox is for infra repos only (helm, argocd-apps, ansible; cellarette
+  denies others), product CI alerts are not triaged, and paperclip-conductor is off.
 - Your reports: **medic** (on-call: cluster health, alerts, daily sweep, GitOps fixes; manages
   housekeeper = disk space and archivist = the canonical homelab doc), **security** (weekly
   scan, infra/config/secrets audits) and **scout** (feeds, AlphaSignal, edge research).
