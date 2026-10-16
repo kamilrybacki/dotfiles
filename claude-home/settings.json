@@ -21,21 +21,20 @@
     "context7@claude-plugins-official": false,
     "github@claude-plugins-official": false,
     "serena@claude-plugins-official": true,
-    "everything-claude-code@everything-claude-code": true,
+    "ecc@ecc": true,
     "n8n-mcp-skills@n8n-mcp-skills": true,
     "codex@openai-codex": true,
     "caveman@caveman": true,
-    "agentmemory@agentmemory": true,
+    "agentmemory@agentmemory": false,
     "rust-analyzer-lsp@claude-plugins-official": true,
     "optimaizr@optimaizr": true
   },
   "extraKnownMarketplaces": {
     "mattpocock": { "source": { "source": "github", "repo": "mattpocock/skills" }, "autoUpdate": true },
-    "everything-claude-code": { "source": { "source": "github", "repo": "affaan-m/everything-claude-code" } },
+    "ecc": { "source": { "source": "github", "repo": "affaan-m/everything-claude-code" } },
     "n8n-mcp-skills": { "source": { "source": "github", "repo": "czlonkowski/n8n-skills" } },
     "openai-codex": { "source": { "source": "github", "repo": "openai/codex-plugin-cc" } },
     "caveman": { "source": { "source": "github", "repo": "JuliusBrussee/caveman" } },
-    "agentmemory": { "source": { "source": "github", "repo": "rohitg00/agentmemory" } },
     "optimaizr": { "source": { "source": "github", "repo": "blendbunjaku/optimaizr" } }
   },
   "hooks": {
