@@ -10,11 +10,13 @@ RS=./node_modules/.bin/rulesync
 HELM_REPO="${HELM_REPO:-$HOME/Code/helm}"
 HERMES_FILE="$HELM_REPO/charts/hermes/files/AGENTS.md"
 rc=0
+. scripts/lib/stage-mcp.sh
 
 "$RS" generate -g --targets claudecode --features rules --check || rc=1
-"$RS" generate -g --targets claudecode --features mcp --check || rc=1
+mcp_generate claudecode --check || rc=1
 "$RS" generate --targets codexcli --features rules -o "$HOME/.codex" --check || rc=1
-"$RS" generate -g --targets codexcli --features mcp --check || rc=1
+mcp_generate codexcli --check || rc=1
+python3 scripts/claude-home.py check || rc=1
 
 # Hermes: render to staging and byte-compare against the committed helm file.
 STAGE="$(mktemp -d)"; trap 'rm -rf "$STAGE"' EXIT
