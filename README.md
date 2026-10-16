@@ -96,3 +96,28 @@ export GITHUB_PAT=your_token_here
 ```
 
 Your `.zshrc` will source that file automatically if it exists.
+
+## Agent setup — reproduce on any machine
+
+The Claude Code + Codex setup (instructions, MCP servers, plugins, hooks,
+settings, rules, graft, jev-gate) is rebuilt from this repo with one idempotent
+command. Re-run it after every `git pull`.
+
+```bash
+git clone git@github.com:kamilrybacki/dotfiles.git ~/Code/dotfiles
+cd ~/Code/dotfiles
+npm run agents:bootstrap          # needs: claude, node/npm, python3, jq, git, curl
+```
+
+Homelab MCP tools work from anywhere: hosts other than lw-main talk to the
+public cellarette edge (`https://cellarette-mcp.<domain>/mcp`, Bearer token);
+lw-main uses its local `:8788` aggregator (`claude-home/hosts/lw-main.json`).
+The token is never stored in this repo. Fetch it once per machine:
+
+```bash
+VAULT_ADDR=http://<vault>:8200 cellarette-token-sync   # on the LAN / WireGuard
+cellarette-token-sync --stdin                          # anywhere else: paste it
+```
+
+The bootstrap prints whatever is left to do (token, Jev key, PATH, Codex env
+var). Details: [`.rulesync/AGENTS-SYNC.md`](.rulesync/AGENTS-SYNC.md).
