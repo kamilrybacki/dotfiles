@@ -109,7 +109,10 @@ elif vault_ready; then
 else
   todo+=("jev key: VAULT_ADDR=http://<vault>:8200 jev-key-sync")
 fi
-if have codex && [[ "$url" == https://* ]] && [ -z "${CELLARETTE_MCP_TOKEN:-}" ]; then
+# This script runs in a non-interactive shell that never sources the rc files,
+# so an unset variable here does not mean the user's shells lack it.
+if have codex && [[ "$url" == https://* ]] && [ -z "${CELLARETTE_MCP_TOKEN:-}" ] \
+   && ! grep -qs 'CELLARETTE_MCP_TOKEN' ~/.bashrc ~/.zshrc ~/.profile ~/.zprofile ~/.bash_profile; then
   todo+=("Codex reads the edge token from the env; add to your shell rc:
       [ -r ~/.config/cellarette/token ] && export CELLARETTE_MCP_TOKEN=\"\$(<~/.config/cellarette/token)\"")
 fi
