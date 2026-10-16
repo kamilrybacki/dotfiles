@@ -1,0 +1,59 @@
+{
+  "$comment": "Merged into ~/.claude/settings.json by scripts/claude-home.py (npm run agents:sync). $HOME is expanded at merge time. Never put permissions, sandbox or secrets here.",
+  "preferences": {
+    "model": "sonnet[1m]",
+    "effortLevel": "high",
+    "advisorModel": "opus",
+    "modelSettings": {
+      "claude-opus-4-8": { "effortLevel": "high" },
+      "claude-fable-5-1": { "effortLevel": "xhigh" }
+    },
+    "statusLine": { "type": "command", "command": "npx -y ccstatusline@latest", "padding": 0 }
+  },
+  "env": {
+    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-haiku-5-5",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "60",
+    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "200000"
+  },
+  "enabledPlugins": {
+    "mattpocock-skills@mattpocock": true,
+    "superpowers@claude-plugins-official": false,
+    "context7@claude-plugins-official": false,
+    "serena@claude-plugins-official": true,
+    "everything-claude-code@everything-claude-code": true,
+    "n8n-mcp-skills@n8n-mcp-skills": true,
+    "codex@openai-codex": true,
+    "caveman@caveman": true,
+    "agentmemory@agentmemory": true,
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "optimaizr@optimaizr": true
+  },
+  "extraKnownMarketplaces": {
+    "mattpocock": { "source": { "source": "github", "repo": "mattpocock/skills" }, "autoUpdate": true },
+    "everything-claude-code": { "source": { "source": "github", "repo": "affaan-m/everything-claude-code" } },
+    "n8n-mcp-skills": { "source": { "source": "github", "repo": "czlonkowski/n8n-skills" } },
+    "openai-codex": { "source": { "source": "github", "repo": "openai/codex-plugin-cc" } },
+    "caveman": { "source": { "source": "github", "repo": "JuliusBrussee/caveman" } },
+    "agentmemory": { "source": { "source": "github", "repo": "rohitg00/agentmemory" } },
+    "optimaizr": { "source": { "source": "github", "repo": "blendbunjaku/optimaizr" } }
+  },
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash", "hooks": [{ "type": "command", "command": "$HOME/.claude/hooks/rtk-rewrite.sh" }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "Edit|Write", "hooks": [{ "type": "command", "command": "$HOME/.claude/hooks/ov-mirror-reminder.sh", "timeout": 5 }] }
+    ],
+    "SessionStart": [
+      { "matcher": "startup|resume", "hooks": [{ "type": "command", "command": "$HOME/.claude/hooks/paperclip-inbox.sh", "timeout": 10 }] }
+    ]
+  },
+  "jcodemunchHooks": {
+    "$comment": "Registered only when jcodemunch-mcp is on PATH.",
+    "WorktreeCreate": [{ "matcher": "", "hooks": [{ "type": "command", "command": "jcodemunch-mcp hook-event create" }] }],
+    "WorktreeRemove": [{ "matcher": "", "hooks": [{ "type": "command", "command": "jcodemunch-mcp hook-event remove" }] }],
+    "PreToolUse": [{ "matcher": "Read", "hooks": [{ "type": "command", "command": "jcodemunch-mcp hook-pretooluse" }] }],
+    "PostToolUse": [{ "matcher": "Edit|Write", "hooks": [{ "type": "command", "command": "jcodemunch-mcp hook-posttooluse" }] }],
+    "PreCompact": [{ "matcher": "", "hooks": [{ "type": "command", "command": "jcodemunch-mcp hook-precompact" }] }]
+  }
+}

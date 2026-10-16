@@ -1,0 +1,4 @@
+{
+  "$comment": "Host overlay, selected by `hostname -s` (override: CLAUDE_HOME_HOST). lw-main runs the local cellarette aggregator on :8788 (profile `default` = all tools; it rejects any Authorization header). Hosts without an overlay use the public edge.",
+  "cellaretteUrl": "http://localhost:8788/mcp?profile=default"
+}
