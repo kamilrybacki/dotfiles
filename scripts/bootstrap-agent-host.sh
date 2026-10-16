@@ -30,10 +30,32 @@ todo=()
 step() { printf '\n== %s ==\n' "$*"; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
+step "platform"
+# Linux and macOS only. On Windows the supported path is WSL2: Claude Code,
+# node and python3 must be installed INSIDE the distro, and Claude Code is
+# then started from the WSL shell. Native Windows (Git Bash / MSYS) cannot
+# provide the ~/.local/bin symlinks, bash hooks and headersHelper this needs.
+case "$(uname -s)" in
+  Linux|Darwin) ;;
+  MINGW*|MSYS*|CYGWIN*)
+    echo "native Windows shell detected: run this inside WSL2 instead (see README, 'Windows')." >&2
+    exit 1 ;;
+  *) echo "unsupported OS: $(uname -s)" >&2; exit 1 ;;
+esac
+wsl=0
+grep -qi microsoft /proc/version 2>/dev/null && wsl=1
+echo "  os: $(uname -s)$( ((wsl)) && echo ' (WSL)')"
+
 step "prerequisites"
 missing=()
 for cmd in claude node npm python3 jq git curl; do
-  have "$cmd" || missing+=("$cmd")
+  have "$cmd" || { missing+=("$cmd"); continue; }
+  # WSL appends the Windows PATH; a /mnt/<drive> hit is a Windows binary
+  # (claude.exe, npm.cmd, the Store python3 stub) and would configure Windows
+  # paths from inside Linux. Install a Linux copy in the distro instead.
+  if ((wsl)) && [[ "$(command -v "$cmd")" == /mnt/* ]]; then
+    missing+=("$cmd (found only the Windows one: $(command -v "$cmd"))")
+  fi
 done
 if ((${#missing[@]})); then
   echo "missing required tools: ${missing[*]}" >&2
