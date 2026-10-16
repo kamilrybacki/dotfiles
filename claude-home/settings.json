@@ -19,6 +19,7 @@
     "mattpocock-skills@mattpocock": true,
     "superpowers@claude-plugins-official": false,
     "context7@claude-plugins-official": false,
+    "github@claude-plugins-official": false,
     "serena@claude-plugins-official": true,
     "everything-claude-code@everything-claude-code": true,
     "n8n-mcp-skills@n8n-mcp-skills": true,
