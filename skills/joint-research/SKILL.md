@@ -4,13 +4,13 @@ description: >
   Two-agent joint research: Claude Code AND the Hermes homelab agent research the same
   topic in parallel from complementary angles, then Claude merges both into a single
   report. Use when the user invokes /joint-research or asks for research "with Hermes",
-  "joint research", or "both of you look into". Requires cellarette paperclipceo__* +
-  exa__* tools and a live Hermes gateway.
+  "joint research", or "both of you look into". Requires kubectl access to ns hermes
+  (api_server), cellarette exa__* tools and a live Hermes gateway.
 metadata:
   version: "1.0.0"
-  last_updated: "2026-07-14"
+  last_updated: "2026-10-25"
   status: active
-  requires: "cellarette MCP (paperclipceo__*, exa__*), Hermes (Paperclip CEO) live in ns hermes"
+  requires: "kubectl to ns hermes (hermes-api :8642), cellarette MCP (exa__*), Hermes live in ns hermes"
   related_skills:
     - deep-research
 ---
@@ -41,9 +41,20 @@ Split the questions into two **complementary** briefs (not copies):
 - Hermes brief: depth on the homelab/agent-relevant angle, its vault + memory recall,
   its independent web pass on the subquestions Claude is NOT covering.
 
-Send Hermes its brief as a Paperclip issue: `paperclipceo__paperclipListAgents` to find the
-`hermes` agent id, then `paperclipceo__paperclipCreateIssue` titled `JOINT-RESEARCH <run-id>`
-and assigned to it (status `todo`) — that wakes Hermes. The description MUST include:
+Send Hermes its brief over its api_server (Paperclip is gone since 2026-10-25), in the
+background so you can research meanwhile. The key never goes on a command line or into output:
+```bash
+kubectl -n hermes port-forward svc/hermes-api 18642:8642 >/dev/null 2>&1 &
+kubectl -n hermes get secret hermes-api-key -o jsonpath='{.data.key}' | base64 -d | python3 -c '
+import json, sys, urllib.request
+key = sys.stdin.read().strip(); brief = open("/tmp/jr-<run-id>-brief.md").read()
+req = urllib.request.Request("http://127.0.0.1:18642/v1/chat/completions", method="POST",
+    data=json.dumps({"model": "hermes-agent", "messages": [{"role": "user", "content": brief}]}).encode(),
+    headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"})
+out = json.load(urllib.request.urlopen(req, timeout=2400))["choices"][0]["message"]["content"]
+open("/tmp/jr-<run-id>-hermes.md", "w").write(out)'
+```
+Run it with `run_in_background`. The brief (first line `JOINT-RESEARCH <run-id>`) MUST include:
 - the run id and topic;
 - its subquestions (bulleted, concrete);
 - deliverable format: markdown with `## Findings`, `## Sources` (URLs), `## Confidence
@@ -63,14 +74,10 @@ Do NOT wait for Hermes before starting. Work your brief:
   flag anything single-sourced.
 
 ### 4. Collect Hermes' findings
-Poll `paperclipceo__paperclipListComments` on that issue every ~2-3 minutes
-(use waiting patterns available in your environment; do not busy-loop). Look for the
-completion marker or a substantive reply mentioning the run id. Hermes may split long
-answers across messages and may reply inside an auto-thread — if the channel shows a
-thread stub, read the thread channelId too.
-- **Timeout**: after ~25 minutes without the marker, post ONE nudge comment. After
-  ~10 more minutes, proceed solo and mark the report "Hermes: no response —
-  single-agent findings only".
+Hermes' answer lands in `/tmp/jr-<run-id>-hermes.md` when the background command finishes
+(you are notified). Check it carries the completion marker.
+- **Timeout**: after ~35 minutes without an answer, proceed solo and mark the report
+  "Hermes: no response — single-agent findings only".
 - If Hermes replies it lacks a tool/capability, note it, fold its partial answer in.
 
 ### 5. Cross-examine + synthesize

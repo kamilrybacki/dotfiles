@@ -23,5 +23,3 @@ It is local-only: it reads token counts, never prompts, and sends nothing anywhe
 - **Habits it rewards** (the operator's sessions spend about 2/3 on re-reading context):
   compact or `/clear` with a handoff note when you change topic, and keep tool output
   small (grep/head instead of cat; offset+limit on big files).
-- The Paperclip agents get the same analysis weekly through the
-  `paperclip-optimaizr-report` CronJob. Do not run it inside the Paperclip pod.
