@@ -19,7 +19,9 @@ echo "== plugins =="
 while IFS= read -r spec; do
   [ -z "${spec:-}" ] && continue
   echo "  + $spec"
-  claude plugin install "$spec" 2>/dev/null || echo "    (already installed or failed: $spec)"
+  if ! out="$(claude plugin install "$spec" 2>&1)"; then
+    echo "    failed: $spec: $(tail -n 1 <<<"$out")"
+  fi
 done < plugins.txt
 
 echo "done. Run 'claude plugin list' to verify."

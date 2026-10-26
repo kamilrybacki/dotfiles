@@ -1,8 +1,7 @@
-agentmemory@agentmemory
 caveman@caveman
 codex@openai-codex
 context7@claude-plugins-official
-everything-claude-code@everything-claude-code
+ecc@ecc
 github@claude-plugins-official
 mattpocock-skills@mattpocock
 n8n-mcp-skills@n8n-mcp-skills

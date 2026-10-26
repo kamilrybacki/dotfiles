@@ -3,8 +3,8 @@
 # (.rulesync/rules/*.md) using rulesync. Edit the shared blocks ONCE there and
 # run this; every agent gets its native file. See .rulesync/AGENTS-SYNC.md.
 #
-# delete:false in rulesync.jsonc guarantees the hand-maintained ~/.claude/rules/
-# tree (Claude-only language rules) is never pruned.
+# delete:false in rulesync.jsonc guarantees ~/.claude/rules/ (the vendored ECC
+# rules tree, copied by scripts/claude-home.py) is never pruned.
 set -euo pipefail
 cd "$(dirname "$0")/.."   # dotfiles root (holds .rulesync/ + rulesync.jsonc)
 
@@ -14,16 +14,25 @@ RS=./node_modules/.bin/rulesync
 HELM_REPO="${HELM_REPO:-$HOME/Code/helm}"
 HERMES_FILE="$HELM_REPO/charts/hermes/files/AGENTS.md"
 
+. scripts/lib/stage-mcp.sh
+
+# Helpers on PATH first: cellarette-headers is the MCP headersHelper below.
+bash cellarette/install.sh
+
 # Local agents → their live global paths.
 # rules: claudecode supports global; codexcli does not, so it needs -o ~/.codex.
 # mcp:   both support global (-g) and MERGE into the existing config, preserving
 #        all other settings (model/auth in config.toml, projects/history in
-#        ~/.claude.json). The cellarette server here has NO secret (local :8788
-#        proxy injects the Bearer), so the source stays git-safe.
+#        ~/.claude.json). Rendered per host from a staged copy (lib/stage-mcp.sh);
+#        no secret is ever written — the token stays in ~/.config/cellarette/token.
 "$RS" generate -g --targets claudecode --features rules
-"$RS" generate -g --targets claudecode --features mcp
+mcp_generate claudecode
 "$RS" generate --targets codexcli --features rules -o "$HOME/.codex"
-"$RS" generate -g --targets codexcli --features mcp
+mcp_generate codexcli
+
+# Claude Code home: settings.json merge (plugins, env, hooks), hooks, RTK.md,
+# rules/ tree. Additive; never touches permissions or secrets.
+python3 scripts/claude-home.py sync
 
 # Hermes lives in a container: render to staging, copy into the helm chart.
 # The actual deploy is GitOps — commit + PR the helm change; ArgoCD seeds the PVC.

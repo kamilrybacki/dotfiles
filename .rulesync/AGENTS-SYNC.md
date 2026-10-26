@@ -33,12 +33,13 @@ inlined file (needed for Codex/Hermes, which cannot `@import`). Filename prefixe
 | Codex         | `codexcli`      | `~/.codex/AGENTS.md`                     | direct (`-o ~/.codex`) |
 | Hermes        | `hermesagent`   | `helm/charts/hermes/files/AGENTS.md`    | staged → commit + PR → ArgoCD → ConfigMap → PVC |
 
-`rulesync.jsonc` sets `delete: false` so the hand-maintained `~/.claude/rules/`
-tree (Claude-only language rules) is NEVER pruned by rulesync.
+`rulesync.jsonc` sets `delete: false` so the `~/.claude/rules/` tree (Claude-only
+language rules, installed by `scripts/claude-home.py`) is NEVER pruned by rulesync.
 
 ## Commands
 
 ```bash
+npm run agents:bootstrap  # new machine: prereqs, plugins, graft, jev, sync, secrets, verify
 npm install            # once — installs the pinned rulesync
 npm run agents:sync    # regenerate every agent file from .rulesync/
 npm run agents:check   # drift guard: non-zero exit if any file is out of sync (CI / pre-commit)
@@ -58,11 +59,51 @@ the helm file is updated locally — commit + PR it; ArgoCD delivers it to the P
   `plugins.txt` + `restore.sh`). That is why `~/.claude/skills/` is mostly symlinks into
   plugin caches — those are plugin-owned, not vendored here.
 
+## Claude Code home (not rulesync)
+
+rulesync does not model `settings.json`, hooks or the rules tree, so
+`scripts/claude-home.py` (run by `agents:sync`; `check` by `agents:check`) installs:
+
+| Source | Installed to | How |
+|--------|--------------|-----|
+| `claude-home/settings.json` | `~/.claude/settings.json` | additive merge, backup `settings.json.pre-sync`, written 0600 |
+| `claude-home/hooks/*` | `~/.claude/hooks/` | copied |
+| `claude-home/RTK.md` | `~/.claude/RTK.md` | copied |
+| `claude-home/rules/**` | `~/.claude/rules/` | copied (vendored everything-claude-code rules snapshot) |
+
+The merge never touches `permissions`, `sandbox`, `autoMode`, the dangerous-mode
+flag or env keys it does not own. Preferences (`model`, `effortLevel`, `statusLine`,
+…) are set only when absent, so `/model` choices survive. jcodemunch hooks are
+registered only when `jcodemunch-mcp` is on PATH.
+
+## MCP: one config, any host
+
+`.rulesync/mcp.jsonc` points the `cellarette` server at the public edge
+(`https://cellarette-mcp.<domain>/mcp?profile=workspace`). Before rulesync runs,
+`scripts/lib/stage-mcp.sh` copies `.rulesync/` to a temp dir and
+`claude-home.py render-mcp` rewrites that one line per host and agent:
+
+- URL: `$CELLARETTE_MCP_URL`, else `claude-home/hosts/<hostname -s>.json`
+  (`cellaretteUrl`), else the edge. lw-main's overlay pins `http://localhost:8788/mcp?profile=default`.
+- Claude Code: `headersHelper: cellarette-headers`. The helper sends `{}` to
+  localhost (`:8788` rejects any Authorization header), a Bearer token to the
+  edge host only, and refuses every other host.
+- Codex: `bearer_token_env_var = "CELLARETTE_MCP_TOKEN"` for https URLs only.
+  Export it in your shell rc from `~/.config/cellarette/token`.
+
+The token lives only in `~/.config/cellarette/token` (0600), written by
+`cellarette-token-sync` (from Vault `secret/homelab/cellarette/mcp`, or `--stdin`).
+Gotchas: rulesync `-g` replaces each MCP server entry as a whole (stale fields
+vanish), and passes unknown keys such as `bearer_token_env_var` through to Codex.
+Claude Code runs a `headersHelper` only in a trusted workspace — accept the
+trust dialog. The `workspace` profile has no lightpanda, silverbullet or codex
+tools; those exist only on lw-main's local aggregator.
+
 ## Bare-install contract
 
-A fresh CLI agent needs only: this dotfiles sync + a reachable Cellarette (:8788 proxy).
-`npm install && npm run agents:sync` gives it rules + MCP(cellarette) + our skills;
-`plugins/restore.sh` re-adds the marketplaces + plugins.
+A fresh machine needs only this repo and network access to the cellarette edge:
+`npm run agents:bootstrap`, then the token. It gives rules + MCP (cellarette,
+graft) + skills + plugins + hooks + settings, and prints what is left to do.
 
 ## Onboard a NEW agent
 

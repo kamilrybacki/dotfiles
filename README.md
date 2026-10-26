@@ -96,3 +96,51 @@ export GITHUB_PAT=your_token_here
 ```
 
 Your `.zshrc` will source that file automatically if it exists.
+
+## Agent setup — reproduce on any machine
+
+The Claude Code + Codex setup (instructions, MCP servers, plugins, hooks,
+settings, rules, graft, jev-gate) is rebuilt from this repo with one idempotent
+command. Re-run it after every `git pull`.
+
+```bash
+git clone git@github.com:kamilrybacki/dotfiles.git ~/Code/dotfiles
+cd ~/Code/dotfiles
+npm run agents:bootstrap          # needs: claude, node/npm, python3, jq, git, curl
+```
+
+Homelab MCP tools work from anywhere: hosts other than lw-main talk to the
+public cellarette edge (`https://cellarette-mcp.<domain>/mcp`, Bearer token);
+lw-main uses its local `:8788` aggregator (`claude-home/hosts/lw-main.json`).
+The token is never stored in this repo. Fetch it once per machine:
+
+```bash
+VAULT_ADDR=http://<vault>:8200 cellarette-token-sync   # on the LAN / WireGuard
+cellarette-token-sync --stdin                          # anywhere else: paste it
+```
+
+The bootstrap prints whatever is left to do (token, Jev key, PATH, Codex env
+var). Details: [`.rulesync/AGENTS-SYNC.md`](.rulesync/AGENTS-SYNC.md).
+
+No SSH key on the machine? Clone over HTTPS instead
+(`git clone https://github.com/kamilrybacki/dotfiles.git`, after `gh auth login`
+and `gh auth setup-git`).
+
+### Windows
+
+Supported through WSL2 only; the bootstrap refuses Git Bash / MSYS. Everything
+runs inside the distro and Claude Code is started from the WSL shell:
+
+```bash
+wsl --install -d Ubuntu                      # PowerShell, once; then open Ubuntu
+sudo apt install -y git curl jq python3 unzip
+curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash   # then reopen the shell
+nvm install --lts
+curl -fsSL https://claude.ai/install.sh | bash   # Claude Code, Linux build
+# gh: https://github.com/cli/cli/blob/trunk/docs/install_linux.md
+```
+
+Keep the clone in the Linux filesystem (`~/Code/dotfiles`, not `/mnt/c/...`).
+WSL appends the Windows `PATH`; the bootstrap stops if `claude`, `node`, `npm`
+or `python3` only resolve to a Windows binary under `/mnt/`. Logins (`claude`,
+`gh`) are separate from the Windows ones and must be done inside WSL.

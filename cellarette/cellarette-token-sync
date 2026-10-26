@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Copy the cellarette MCP edge token from Vault (secret/homelab/cellarette/mcp,
+# field `token`) into ~/.config/cellarette/token (0600). The value is never printed.
+# cellarette-headers (the Claude Code headersHelper) reads that file; for Codex,
+# export it from your shell rc:
+#   [ -r ~/.config/cellarette/token ] && export CELLARETTE_MCP_TOKEN="$(<~/.config/cellarette/token)"
+#
+# Usage: cellarette-token-sync           # from Vault (VAULT_ADDR, VAULT_TOKEN or ~/.vault-token)
+#        cellarette-token-sync --stdin   # paste/pipe the token instead (no Vault access)
+set -euo pipefail
+
+addr="${VAULT_ADDR:-http://127.0.0.1:8200}"
+token_file="${VAULT_TOKEN_FILE:-$HOME/.vault-token}"
+out="${XDG_CONFIG_HOME:-$HOME/.config}/cellarette/token"
+
+mkdir -p "$(dirname "$out")"
+umask 077
+if [[ "${1:-}" == "--stdin" ]]; then
+  [[ -t 0 ]] && echo "paste the token, then Ctrl-D:" >&2
+  tr -d '[:space:]' >"$out.tmp"
+else
+  vtoken="${VAULT_TOKEN:-$(<"$token_file")}"
+  curl -fsS -H "X-Vault-Token: $vtoken" "$addr/v1/secret/data/homelab/cellarette/mcp" \
+    | jq -er '.data.data.token' | tr -d '[:space:]' >"$out.tmp"
+fi
+[[ -s "$out.tmp" ]] || { rm -f "$out.tmp"; echo "empty token, nothing written" >&2; exit 1; }
+mv "$out.tmp" "$out"
+echo "wrote $out ($(wc -c <"$out") bytes)"
