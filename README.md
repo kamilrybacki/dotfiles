@@ -144,3 +144,40 @@ Keep the clone in the Linux filesystem (`~/Code/dotfiles`, not `/mnt/c/...`).
 WSL appends the Windows `PATH`; the bootstrap stops if `claude`, `node`, `npm`
 or `python3` only resolve to a Windows binary under `/mnt/`. Logins (`claude`,
 `gh`) are separate from the Windows ones and must be done inside WSL.
+
+## Third-party agent harness on a laptop (agent-ds)
+
+`scripts/setup-agent-ds.sh` creates an unprivileged WSL account `agent-ds` and
+configures Claude Code there to use the homelab LiteLLM (DeepSeek-only key, capped)
+and a read-only cellarette profile token (`deepseek-ro`), with `bypassPermissions`.
+
+**Why a separate account:** the harness runs with permissions bypassed, so it must
+never see your `~/.ssh`, `~/.kube`, or the full cellarette token. `agent-ds` has no
+sudo, and the script sets your own home directory to `750` so `agent-ds` cannot read it. You keep sudo.
+
+**Needs:** the WireGuard tunnel up, key-based `ssh` to lw-main (`kamil-rybacki@192.168.0.111`),
+and LiteLLM reachable on the LAN. The script reads both secrets from Vault on lw-main;
+it never prints them.
+
+**Run** (as your normal user, not root; it calls `sudo` where needed):
+
+```bash
+bash scripts/setup-agent-ds.sh
+```
+
+It is idempotent. Re-run it after rotating a key. Start the harness with `sudo -iu agent-ds`, then `cd ~/work && claude`.
+
+**Revoke:**
+
+- LiteLLM: delete the virtual key with alias `laptop-agent-ds`.
+- cellarette: revoke the `deepseek-ro` profile token (Vault `secret/homelab/cellarette/deepseek`).
+- Local: `sudo deluser --remove-home agent-ds` removes the account and its files.
+
+**Gotchas:**
+
+- Claude Code assumes a 200k context window for models it does not know. The script sets
+  `CLAUDE_CODE_AUTO_COMPACT_WINDOW=100000` so auto-compaction fires before DeepSeek's real limit.
+- DeepSeek self-identifies as Claude. Do not use the model's answer about its own identity as evidence of which backend served the request.
+- Claude Code rewrites `~/.claude/settings.json` on first start. The script merges only
+  `permissions.defaultMode` with `jq` after that, so re-running it restores the bypass mode without touching the rest.
+- The first start asks once to confirm bypass-permissions mode.
