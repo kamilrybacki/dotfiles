@@ -43,9 +43,6 @@
     ],
     "PostToolUse": [
       { "matcher": "Edit|Write", "hooks": [{ "type": "command", "command": "$HOME/.claude/hooks/ov-mirror-reminder.sh", "timeout": 5 }] }
-    ],
-    "SessionStart": [
-      { "matcher": "startup|resume", "hooks": [{ "type": "command", "command": "$HOME/.claude/hooks/paperclip-inbox.sh", "timeout": 10 }] }
     ]
   },
   "jcodemunchHooks": {

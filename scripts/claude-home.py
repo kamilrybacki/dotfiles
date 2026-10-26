@@ -30,7 +30,7 @@ CLAUDE = HOME / ".claude"
 SETTINGS = CLAUDE / "settings.json"
 
 EDGE_URL = "https://cellarette-mcp.kamilandrzejrybacki.dpdns.org/mcp?profile=workspace"
-HOOK_FILES = ["rtk-rewrite.sh", "ov-mirror-reminder.sh", "paperclip-inbox.sh", "paperclip-inbox.py"]
+HOOK_FILES = ["rtk-rewrite.sh", "ov-mirror-reminder.sh"]
 
 
 def load_json(path: Path) -> dict:
