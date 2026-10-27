@@ -25,9 +25,16 @@ Defaults: generator `deepseek/deepseek-chat`; judges `deepseek/deepseek-chat` an
      `{"ok": true|false, "reason": "..."}`. If omitted, `instructions.txt` is reused, so write a separate rubric when the judge's job differs from the generator's.
 
 2. **Gate and dry run.** `python3 <SKILL_DIR>/gen-validate.py --items ... --instructions ... --out <dir> --dry-run`.
-   It checks args, runs `jev-gate route`, and prints the plan. No network, no key.
-   Exit 4 means the data is restricted or the gate is unavailable. Stop and tell the
-   operator. Never switch to an open or OpenCode model to get around it.
+   It checks args, computes the sensitivity tier (`max(deterministic rules, jev)`,
+   shared with cross-review), and prints the plan. No network, no key.
+   - Deterministic restricted hits (infra, secrets, network paths; private keys,
+     tokens, 192.168.x / 10.x in the data) and jev "restricted" refuse, exit 4.
+     `--data-class` does NOT override them.
+   - jev uncertain or unavailable, with clear rules, also exits 4 with "ask the operator".
+     **ASK the operator** to confirm the data is open: synthetic or public, no customer
+     data, no infra, no secrets. Only after a clear yes, re-run with `--data-class open`.
+     Never set that flag on your own. Never switch to an OpenCode or other model to get
+     around the gate.
 
 3. **Run.** Same command without `--dry-run`. The key comes from `LITELLM_GEN_KEY`, or
    the script reads Vault `secret/homelab/litellm/gen-validate#api_key` itself

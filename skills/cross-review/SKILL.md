@@ -31,10 +31,16 @@ implement, consolidate and fix. Reviewers never edit files. Never merge.
    secrets, DB migrations, public API/contracts, dependency or lockfiles, or > 400
    changed lines (Codex `gpt-6.1-sol` medium + B).
 
-3. **Sensitivity.** `tier` comes from `jev-gate route`. `restricted` (including
-   "jev unavailable" or "jev-uncertain") means no OpenCode Go reviewer. Codex still
-   runs. If the tier is restricted and the operator wants Reviewer B, say so and stop
-   there. Do not route around the gate.
+3. **Sensitivity.** `tier` = max(deterministic rules, jev), from `sensitivity.py`
+   (called by `rank.sh`). Deterministic restricted hits always win: infra paths (helm,
+   charts, ansible, argocd, terraform, k8s, .github/workflows, Dockerfile,
+   compose), secrets paths (.env, *secret*, *credential*, keys, vault, sops), network
+   paths (wireguard, caddy, cloudflared, iptables, ufw, /etc), and added lines with
+   private keys, tokens, or 192.168.x / 10.x addresses. jev "restricted" also wins.
+   If jev is uncertain or unavailable and the rules are clear, tier = standard and
+   the output says `jev uncertain -> deterministic: standard (...)`. Reviewer B is
+   allowed. `restricted` means no OpenCode Go reviewer. Codex still runs. Do not route
+   around the tier.
 
 4. **Run both reviewers in parallel.** Run this in the background (it can take minutes):
    ```bash
@@ -67,5 +73,6 @@ implement, consolidate and fix. Reviewers never edit files. Never merge.
   That copies this skill to `~/.claude/skills/cross-review` and the `reviewer` agent to
   `~/.config/opencode/agent/`. Restart the OpenCode thread after syncing.
 - Reviewer B needs `opencode agent list` to show `reviewer`. Otherwise it is skipped.
+- Tests without API calls: `python3 sensitivity.py files --task t <file>` shows the tier and reasons for any file.
 - Tests: `bash rank.sh --repo <repo> --base <ref>` and `run-reviews.sh --dry-run`
   need no API calls.

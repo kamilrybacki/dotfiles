@@ -200,9 +200,15 @@ Two skills, both shipped by `agents:sync` to Claude Code on every host.
   migrations, public API/contracts, dependency or lockfiles, or > 400 changed lines.
   Codex sol medium + Reviewer B.
 
-**Sensitivity gate.** `jev-gate route` decides the tier. `restricted`, including
-"jev-uncertain" and "jev unavailable", means no OpenCode Go reviewer and no open or
-Chinese model anywhere. Codex is first-party and still runs.
+**Sensitivity gate.** Tier = max(deterministic rules, jev), from `skills/cross-review/sensitivity.py`.
+Deterministic restricted hits always win: infra paths (helm, charts, ansible, argocd,
+terraform, k8s, `.github/workflows`, Dockerfile, compose), secrets paths (`.env`, `*secret*`,
+`*credential*`, keys, vault, sops), network paths (wireguard, caddy, cloudflared, iptables,
+ufw, `/etc`), and content with private keys, tokens, or 192.168.x / 10.x addresses.
+jev "restricted" also wins. jev "uncertain" or unavailable with clear rules gives
+`standard` (cross-review may use Reviewer B). `restricted` means no OpenCode Go reviewer
+and no open or Chinese model. Codex is first-party and still runs. For gen-validate,
+jev uncertain needs an operator-confirmed `--data-class open`. Restricted data is refused even with the flag.
 
 **Go vs LiteLLM.** The OpenCode Go subscription is for interactive coding only. Bulk
 generation and judging go through the homelab LiteLLM API (`gen-validate` refuses

@@ -15,12 +15,18 @@ import json
 import os
 import random
 import re
-import shutil
 import subprocess
 import sys
 import time
 import urllib.error
 import urllib.request
+
+# Shared sensitivity classifier lives next to the cross-review skill.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "cross-review"))
+try:
+    import sensitivity  # noqa: E402
+except ImportError:
+    sensitivity = None
 
 DEFAULT_BASE = "http://192.168.0.60:30400/v1"
 DEFAULT_GEN = "deepseek/deepseek-chat"
@@ -54,6 +60,9 @@ def parse_args(argv):
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--price-in-per-m", type=float, default=0.0, help="USD per 1M input tokens (optional)")
     p.add_argument("--price-out-per-m", type=float, default=0.0, help="USD per 1M output tokens (optional)")
+    p.add_argument("--data-class", choices=["open"],
+                   help="operator-confirmed: data is synthetic/public, no customer data, no infra/secrets. "
+                        "Only needed when jev is uncertain. Never set it on your own.")
     p.add_argument("--dry-run", action="store_true", help="validate args, tier and plan; no network, no key")
     a = p.parse_args(argv)
     if a.judge_a == a.judge_b:
@@ -84,19 +93,24 @@ def load_items(path):
     return items
 
 
-def jev_tier(paths, n_items):
-    """Sensitivity gate. Missing or unparsable jev-gate output counts as restricted."""
-    if not shutil.which("jev-gate"):
-        return "restricted"
-    cmd = ["jev-gate", "route", "--task", f"gen-validate {n_items} items"]
+def sensitivity_gate(args, items_path, n_items):
+    """max(deterministic rules, jev). Restricted always refuses, even with --data-class.
+    jev uncertain/unavailable refuses unless the operator passed --data-class open."""
+    if sensitivity is None:
+        die(4, "sensitivity module missing (skills/cross-review/sensitivity.py): refusing")
+    paths = [p for p in (items_path, args.instructions, args.rubric) if p]
+    texts = []
     for p in paths:
-        cmd += ["--file", p]
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    try:
-        tier = json.loads(r.stdout).get("tier", "")
-    except (ValueError, AttributeError):
-        tier = ""
-    return tier if tier in ("open", "standard", "restricted") else "restricted"
+        with open(p, encoding="utf-8", errors="replace") as fh:
+            texts.append((os.path.basename(p), fh.read()))
+    rep = sensitivity.classify(f"gen-validate {n_items} items", paths, texts)
+    if rep["tier"] == "restricted":
+        die(4, "refusing: restricted data (even --data-class cannot override): " + "; ".join(rep["reasons"]))
+    if rep["uncertain"] and args.data_class != "open":
+        die(4, "jev is uncertain about this data and deterministic rules are clear. The operator must "
+               "confirm the data is open (synthetic or public, no customer data, no infra or secrets), "
+               "then re-run with --data-class open. Do not set this flag yourself.")
+    return rep
 
 
 def api_key(env_name, vault_path, field):
@@ -243,11 +257,9 @@ def main(argv):
         with open(args.rubric, encoding="utf-8") as fh:
             rubric = fh.read()
     items = load_items(args.items)
-    tier = jev_tier([args.items, args.instructions], len(items))
-    if tier == "restricted":
-        die(4, "jev-gate tier is restricted (or jev-gate unavailable): refusing to send data to "
-               "China-hosted or open endpoints")
-    plan = {"items": len(items), "tier": tier, "base_url": args.base_url, "generator": args.generator,
+    rep = sensitivity_gate(args, args.items, len(items))
+    tier = rep["tier"]
+    plan = {"items": len(items), "tier": tier, "sensitivity": rep, "base_url": args.base_url, "generator": args.generator,
             "judges": [args.judge_a, args.judge_b], "concurrency": args.concurrency,
             "max_tokens_judge": args.max_tokens_judge}
     if args.dry_run:

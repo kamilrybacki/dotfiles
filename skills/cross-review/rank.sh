@@ -13,6 +13,7 @@
 # --min-rank can only RAISE the rank. Lowering is not possible by design.
 set -euo pipefail
 
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$PWD"
 base=""
 min_rank=1
@@ -94,23 +95,24 @@ if [ "$min_rank" -gt "$rank" ]; then
   rank=$min_rank
 fi
 
-# Sensitivity gate: jev-gate route. Anything other than open|standard, or a
-# missing/failed jev-gate, is treated as restricted.
-tier=restricted
-if command -v jev-gate >/dev/null 2>&1; then
-  fargs=()
-  for f in "${files[@]}"; do fargs+=(--file "$f"); done
-  out=$(cd "$repo" && jev-gate route --task "cross-review $base...HEAD" "${fargs[@]}" 2>/dev/null) || out=""
-  tier=$(printf '%s' "$out" | python3 -c '
+# Sensitivity: max(deterministic rules, jev). See sensitivity.py for the rules.
+# jev uncertain/unavailable + clear rules -> standard; any restricted hit -> restricted.
+sens=$(python3 "$here/sensitivity.py" git --repo "$repo" --base "$base" \
+         --task "cross-review $base...HEAD" 2>/dev/null) || sens='{"tier": "restricted", "reasons": ["sensitivity.py failed"]}'
+tier=$(printf '%s' "$sens" | python3 -c '
 import json, sys
 try:
     t = json.load(sys.stdin).get("tier", "")
 except Exception:
     t = ""
 print(t if t in ("open", "standard", "restricted") else "restricted")')
-else
-  reasons+=("jev-gate not on PATH: tier treated as restricted")
-fi
+sens_reasons=$(printf '%s' "$sens" | python3 -c '
+import json, sys
+try:
+    for r in json.load(sys.stdin).get("reasons", []): print(r)
+except Exception:
+    print("sensitivity output unparsable")')
+while IFS= read -r r; do [ -n "$r" ] && reasons+=("$r"); done <<<"$sens_reasons"
 [ "$tier" = restricted ] && reasons+=("tier=restricted: no OpenCode Go / open-model reviewer")
 
 case "$rank" in
