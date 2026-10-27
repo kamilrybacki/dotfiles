@@ -147,6 +147,17 @@ def api_key(env_name, vault_path, field):
     return key
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Refuse every redirect. urllib would replay the Authorization header to a new host,
+    or downgrade https to http. A 3xx then surfaces as an HTTPError and the run stops."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
 def chat(base, key, model, system, user, max_tokens, retries=2):
     body = json.dumps({
         "model": model,
@@ -160,7 +171,7 @@ def chat(base, key, model, system, user, max_tokens, retries=2):
             base.rstrip("/") + "/chat/completions", data=body, method="POST",
             headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"})
         try:
-            with urllib.request.urlopen(req, timeout=180) as resp:
+            with _OPENER.open(req, timeout=180) as resp:
                 data = json.load(resp)
                 cost = float(resp.headers.get("x-litellm-response-cost") or 0)
             choice = (data.get("choices") or [{}])[0]

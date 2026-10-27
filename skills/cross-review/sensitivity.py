@@ -54,16 +54,34 @@ CONTENT = [
 ]
 
 
-def path_hits(path):
+TOKEN_SPLIT = re.compile(r"[\s\"'`<>()\[\]{},;=]+")
+
+
+def path_labels(path):
+    """Rule categories a path matches. Never returns the path itself."""
     p = path.lower()
     base = os.path.basename(p)
-    hits = []
+    labels = []
     for label, pats in (("infra", INFRA), ("secrets", SECRETS), ("network", NETWORK)):
-        for pat in pats:
-            if fnmatch.fnmatch(p, pat) or fnmatch.fnmatch(base, pat):
-                hits.append(f"restricted: {label} path {path}")
-                break
-    return hits
+        if any(fnmatch.fnmatch(p, pat) or fnmatch.fnmatch(base, pat) for pat in pats):
+            labels.append(label)
+    return labels
+
+
+def path_hits(path):
+    return [f"restricted: {label} path {path}" for label in path_labels(path)]
+
+
+def token_path_hits(label, text):
+    """Path-like tokens inside free text (decoded strings, diffs, prompts, outputs).
+    A token counts only if it contains '/' or '.', so prose words stay clear.
+    Reasons name the category, never the token."""
+    found = set()
+    for tok in TOKEN_SPLIT.split(text):
+        t = re.sub(r"^[ab]/", "", tok.rstrip("."))
+        if "/" in t or "." in t:
+            found.update(path_labels(t))
+    return [f"restricted: {cat} path-like token in {label}" for cat in sorted(found)]
 
 
 def content_hits(label, text):
@@ -77,12 +95,16 @@ def classify(paths, texts):
         reasons += path_hits(p)
     for label, text in texts:
         reasons += content_hits(label, text)
+        reasons += token_path_hits(label, text)
     return {"tier": "restricted" if reasons else "standard", "reasons": reasons}
 
 
 def git_paths(repo, base):
-    out = subprocess.check_output(["git", "-C", repo, "diff", "--name-only", f"{base}...HEAD"], text=True)
-    return out.split()
+    # -z: NUL-separated, unquoted names (no C-quoting of non-ASCII or special chars).
+    # --no-renames: both old and new names are listed, so a rename out of a restricted path shows.
+    out = subprocess.check_output(
+        ["git", "-C", repo, "diff", "-z", "--no-renames", "--name-only", f"{base}...HEAD"])
+    return [p for p in out.decode("utf-8", errors="surrogateescape").split("\0") if p]
 
 
 def git_diff(repo, base):
