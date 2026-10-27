@@ -180,3 +180,51 @@ It is idempotent. Re-run it after rotating a key. Start the harness with `sudo -
 - Claude Code rewrites `~/.claude/settings.json` on first start. The script merges only
   `permissions.defaultMode` with `jq` after that, so re-running it restores the bypass mode without touching the rest.
 - The first start asks once to confirm bypass-permissions mode.
+
+## Cross-model review and data validation
+
+Two skills, both shipped by `agents:sync` to Claude Code on every host.
+
+| Role | Model | Tool | When |
+|---|---|---|---|
+| Implementer | Claude | Claude Code / T3 Code | always |
+| Reviewer A | Codex: `gpt-6-luna` (rank 1-2), `gpt-6.1-sol` (rank 3) | `codex exec`, read-only sandbox | always |
+| Reviewer B | Kimi K3 (OpenCode Go, agent `reviewer`) | `opencode run --agent reviewer` | rank >= 2 and data not restricted |
+| Generator / judges (bulk data) | `deepseek/deepseek-chat`, `groq/gpt-oss-120b` | LiteLLM (`gen-validate`) | data labelling only, never OpenCode Go |
+
+**Rank rules** (`skills/cross-review/rank.sh`, deterministic; the skill may raise, never lower):
+
+- rank 1: docs or tests only, <= 150 changed lines. Codex luna low. Reviewer B skipped.
+- rank 2: normal feature or bugfix. Codex luna medium + Reviewer B.
+- rank 3: security/auth/crypto, infra/CI/helm/ansible/argocd/terraform, secrets, DB
+  migrations, public API/contracts, dependency or lockfiles, or > 400 changed lines.
+  Codex sol medium + Reviewer B.
+
+**Sensitivity gate.** `jev-gate route` decides the tier. `restricted`, including
+"jev-uncertain" and "jev unavailable", means no OpenCode Go reviewer and no open or
+Chinese model anywhere. Codex is first-party and still runs.
+
+**Go vs LiteLLM.** The OpenCode Go subscription is for interactive coding only. Bulk
+generation and judging go through the homelab LiteLLM API (`gen-validate` refuses
+OpenCode Go endpoints). `opencode/agent/` ships only `reviewer`.
+
+**Use it from T3 Code.**
+
+- Claude thread: finish the change, commit, then run `/cross-review [base-ref]` in the
+  same thread. Claude consolidates and fixes. Max 3 rounds.
+- OpenCode thread: `@reviewer` reviews the current diff read-only. Its answer ends in a
+  `VERDICT:` line. It does not edit or run commands.
+- Data labelling: run `/gen-validate` in a Claude thread. It is not an OpenCode agent.
+
+**Install** (on each host, lw-main and the WSL laptop):
+
+```bash
+git pull && npm run agents:sync
+```
+
+The sync copies `skills/cross-review` and `skills/gen-validate` into `~/.claude/skills/`
+and `opencode/agent/*.md` into `~/.config/opencode/agent/`. It never deletes files.
+Restart OpenCode after syncing.
+
+**Needs:** `codex` (Codex CLI), `opencode` 1.19+ (for Reviewer B), `jev-gate`,
+`python3`. Vault access on lw-main for the LiteLLM key, or `LITELLM_GEN_KEY`.

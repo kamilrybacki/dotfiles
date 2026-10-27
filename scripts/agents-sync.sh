@@ -66,6 +66,17 @@ for d in skills/*/; do
 done
 echo "skills: synced $(find skills -maxdepth 1 -mindepth 1 -type d | wc -l) to $SKILLS_DST"
 
+# OpenCode agents (cross-review Reviewer B; gen-validate roles). One markdown file per
+# agent, copied byte-faithfully. Additive: only same-named files are overwritten; the
+# user's other agents and opencode.json are never touched.
+OC_AGENT_DST="${OPENCODE_AGENT_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/opencode/agent}"
+mkdir -p "$OC_AGENT_DST"
+for f in opencode/agent/*.md; do
+  [ -f "$f" ] || continue
+  cp -f "$f" "$OC_AGENT_DST/$(basename "$f")"
+done
+echo "opencode agents: synced $(ls opencode/agent/*.md | wc -l) to $OC_AGENT_DST"
+
 # optimAIzr (token-spend analysis, rule 60-optimaizr.md): pinned CLI in ~/.local (the npm
 # global prefix /usr/local is root-owned) plus its Claude Code plugin (per-turn cost line,
 # retry-loop guard). Idempotent. The statusline is NOT touched (ccstatusline stays).
