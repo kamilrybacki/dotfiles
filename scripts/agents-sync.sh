@@ -63,6 +63,7 @@ for d in skills/*/; do
   dest="$SKILLS_DST/$(basename "$d")"
   rm -rf "$dest"          # replace, don't nest (cp into an existing dir creates dest/src)
   cp -a "${d%/}" "$dest"
+  find "$dest" -name __pycache__ -type d -prune -exec rm -rf {} +
 done
 echo "skills: synced $(find skills -maxdepth 1 -mindepth 1 -type d | wc -l) to $SKILLS_DST"
 
