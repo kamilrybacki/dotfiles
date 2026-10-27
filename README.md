@@ -180,3 +180,73 @@ It is idempotent. Re-run it after rotating a key. Start the harness with `sudo -
 - Claude Code rewrites `~/.claude/settings.json` on first start. The script merges only
   `permissions.defaultMode` with `jq` after that, so re-running it restores the bypass mode without touching the rest.
 - The first start asks once to confirm bypass-permissions mode.
+
+## Cross-model review and data validation
+
+Two skills, both shipped by `agents:sync` to Claude Code on every host.
+
+| Role | Model | Tool | When |
+|---|---|---|---|
+| Implementer | Claude | Claude Code / T3 Code | always |
+| Reviewer A | Codex: `gpt-6-luna` (rank 1-2), `gpt-6.1-sol` (rank 3) | `codex exec`, read-only sandbox | always |
+| Reviewer B | Kimi K3 (OpenCode Go, agent `reviewer`) | `opencode run --agent reviewer` | rank >= 2 and payload standard |
+| Generator / judges (bulk data) | `deepseek/deepseek-chat`, `groq/gpt-oss-120b` | LiteLLM (`gen-validate`) | data labelling only, never OpenCode Go |
+
+**Rank rules** (`skills/cross-review/rank.sh`, deterministic; the skill may raise, never lower):
+
+- rank 1: docs or tests only, <= 150 changed lines. Codex luna low. Reviewer B skipped.
+- rank 2: normal feature or bugfix. Codex luna medium + Reviewer B.
+- rank 3: security/auth/crypto, infra/CI/helm/ansible/argocd/terraform, secrets, DB
+  migrations, public API/contracts, dependency or lockfiles, or > 400 changed lines.
+  Codex sol medium + Reviewer B.
+
+**Sensitivity gate (deterministic only).** `skills/cross-review/sensitivity.py` is the only
+gate. It has no LLM and no external classifier. It inspects the exact text being sent:
+the full diff for cross-review, and the decoded JSON strings plus instructions and rubric
+for gen-validate. Any hit means `restricted`:
+
+- paths: infra (helm, charts, ansible, argocd, terraform, k8s, `.github/workflows`,
+  Dockerfile, compose), secrets (`.env`, `*secret*`, `*credential*`, keys, vault, sops),
+  network (wireguard, caddy, cloudflared, iptables, ufw, `/etc`);
+- content: private keys, API tokens, private IPv4 (192.168.x.x, 10.x.x.x).
+
+No hit means `standard`. A restricted hit means first-party models only. Restricted data
+never goes to OpenCode Go, open-weight, or China-hosted endpoints. Codex is first-party
+and still runs. Reviewer B is refused. gen-validate refuses the run. No override flag exists.
+
+**Jev (advisory only).** Jev (TypeSafe) is removed as a gate everywhere. The deterministic
+rules above are the only gate. Jev is used in two places and only as advice:
+`/cross-review` (step 2b, raise-only: it may raise the rank at confidence 0.7 or higher, and
+never lowers it, and it is never called for restricted payloads) and `/route` (a choice
+question, with hard overrides for infra and secrets). Jev never receives diffs, code or
+secrets, only metadata and a short agent-written summary. Jev is never used for gen-validate
+labels, because Jev's terms forbid using its decisions as training data.
+
+**Go vs LiteLLM.** The OpenCode Go subscription is for interactive coding only. Bulk
+generation and judging go through the homelab LiteLLM API (`gen-validate` refuses
+OpenCode Go endpoints). `opencode/agent/` ships only `reviewer`. That agent has no tools, so it cannot read
+the repo. It reviews only the diff in the prompt.
+
+**Use it from T3 Code.**
+
+- Claude thread: finish the change, commit, then run `/cross-review [base-ref]` in the
+  same thread. Claude consolidates and fixes. Max 3 rounds.
+- OpenCode thread: `@reviewer` reviews the diff in the attached prompt. It has no tools at
+  all. Its answer ends in a `VERDICT:` line.
+- Which agent for a task: `/route <task>` prints Jev's advice. It starts nothing.
+- Data labelling: run `/gen-validate` in a Claude thread. It is not an OpenCode agent.
+
+**Install** (on each host, lw-main and the WSL laptop):
+
+```bash
+git pull && npm run agents:sync
+```
+
+The sync copies `skills/cross-review` and `skills/gen-validate` into `~/.claude/skills/`
+and `opencode/agent/*.md` into `~/.config/opencode/agent/`. It never deletes files.
+Restart OpenCode after syncing. Set `LITELLM_BASE_URL` to the homelab LiteLLM LAN URL on
+hosts that cannot use the script default. Plaintext `http://` needs the operator's
+`--allow-http-lan` flag, because the API key and data then travel unencrypted.
+
+**Needs:** `codex` (Codex CLI), `opencode` 1.19+ (for Reviewer B), `python3`. Vault access
+on lw-main for the LiteLLM key, or `LITELLM_GEN_KEY`.

@@ -34,7 +34,8 @@ fi
 for d in skills/*/; do
   [ -d "$d" ] || continue
   b="$(basename "$d")"
-  if diff -rq "$d" "$HOME/.claude/skills/$b" >/dev/null 2>&1; then :; else
+  # Running a skill's Python leaves __pycache__ on either side; it is not drift.
+  if diff -rq -x __pycache__ "$d" "$HOME/.claude/skills/$b" >/dev/null 2>&1; then :; else
     echo "DRIFT  skill: $b"; rc=1
   fi
 done
