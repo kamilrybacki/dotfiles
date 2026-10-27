@@ -234,6 +234,11 @@ the repo. It reviews only the diff in the prompt.
 - OpenCode thread: `@reviewer` reviews the diff in the attached prompt. It has no tools at
   all. Its answer ends in a `VERDICT:` line.
 - Which agent for a task: `/route <task>` prints Jev's advice. It starts nothing.
+- Start a thread on the chosen agent: `/t3-route <task>`. It prints the plan first and
+  starts the thread (`--yes`) only after you confirm. `opencode_kimi` and `pi_free` are
+  refused for infra or secret tasks and for infra repos (helm, ansible, argocd-apps,
+  n8n-workflows, cellarette, dotfiles, or any repo tracking secrets or network files).
+  Set the Pi model in `~/.config/t3-route/routes.json` (`{"routes": {"pi_free": {"model": "..."}}}`).
 - Data labelling: run `/gen-validate` in a Claude thread. It is not an OpenCode agent.
 
 **Install** (on each host, lw-main and the WSL laptop):
@@ -242,7 +247,8 @@ the repo. It reviews only the diff in the prompt.
 git pull && npm run agents:sync
 ```
 
-The sync copies `skills/cross-review` and `skills/gen-validate` into `~/.claude/skills/`
+The sync copies every skill under `skills/` (including `cross-review`, `gen-validate`,
+`route` and `t3-route`) into `~/.claude/skills/`
 and `opencode/agent/*.md` into `~/.config/opencode/agent/`. It never deletes files.
 Restart OpenCode after syncing. Set `LITELLM_BASE_URL` to the homelab LiteLLM LAN URL on
 hosts that cannot use the script default. Plaintext `http://` needs the operator's

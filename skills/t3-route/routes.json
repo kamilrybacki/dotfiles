@@ -1,0 +1,8 @@
+{
+  "routes": {
+    "claude": {"provider": "claudeAgent", "model": null},
+    "codex": {"provider": "codex", "model": "gpt-6-luna"},
+    "opencode_kimi": {"provider": "opencode", "model": "opencode-go/kimi-k3"},
+    "pi_free": {"provider": "pi", "model": null, "model_required": true}
+  }
+}
