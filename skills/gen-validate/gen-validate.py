@@ -20,6 +20,7 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 # Shared deterministic classifier lives next to the cross-review skill.
@@ -69,10 +70,14 @@ def parse_args(argv):
     if a.judge_a == a.judge_b:
         die(2, "--judge-a and --judge-b must differ (independent judges)")
     for m in (a.generator, a.judge_a, a.judge_b):
-        if m.startswith("opencode-go/") or "opencode" in a.base_url:
+        if m.lower().startswith("opencode-go/") or "opencode" in a.base_url.lower():
             die(2, f"refusing {m}: OpenCode Go is not for bulk data; use LiteLLM")
-    if a.base_url.startswith("http://") and not a.allow_http_lan \
-            and not re.match(r"http://(127\.0\.0\.1|localhost)[:/]", a.base_url):
+    # Parse rather than prefix-match: "HTTP://" or a bare host must not slip past.
+    u = urllib.parse.urlsplit(a.base_url)
+    scheme, host = u.scheme.lower(), (u.hostname or "").lower()
+    if scheme not in ("http", "https") or not host:
+        die(2, f"base URL must be http(s)://<host>/..., got scheme {scheme or '(none)'!r}")
+    if scheme == "http" and host not in ("127.0.0.1", "localhost", "::1") and not a.allow_http_lan:
         die(2, "plaintext http:// base URL: the API key and data would travel unencrypted. "
                "Use https://, or the operator passes --allow-http-lan for the homelab LAN")
     if a.concurrency < 1 or a.sample < 0:

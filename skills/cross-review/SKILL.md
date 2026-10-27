@@ -48,7 +48,7 @@ implement, consolidate and fix. Reviewers never edit files. Never merge.
    means `restricted`. No hit means `standard`. Restricted hits: infra paths (helm,
    charts, ansible, argocd, terraform, k8s, .github/workflows, Dockerfile, compose),
    secret paths (.env, *secret*, *credential*, keys, vault, sops), network paths
-   (wireguard, caddy, cloudflared, iptables, ufw, /etc), and private keys, tokens,
+   (wireguard, caddy, cloudflared, iptables, ufw, /etc), and private keys, tokens, credential assignments,
    or 192.168.x / 10.x addresses. Restricted means first-party models only. Codex
    still runs. Reviewer B is refused. Never route restricted data to OpenCode Go or
    any open or China-hosted model. Do not work around a hit.

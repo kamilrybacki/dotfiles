@@ -28,7 +28,7 @@ Defaults: generator `deepseek/deepseek-chat`; judges `deepseek/deepseek-chat` an
 2. **Gate and dry run.** `python3 <SKILL_DIR>/gen-validate.py --items ... --instructions ... --out <dir> --dry-run`.
    It classifies the DECODED JSON strings (keys and ids included), the instructions, and
    the rubric with the deterministic rules in `sensitivity.py`. No network, no key.
-   - Any hit (infra, secret or network paths; private keys, tokens, or 192.168.x /
+   - Any hit (infra, secret or network paths; private keys, tokens, credential assignments, or 192.168.x /
      10.x addresses in the data) exits 4 and refuses the run. Restricted data never goes
      to open or China-hosted endpoints. There is no override flag. Stop and tell the
      operator. Never move the data to another model to get around the hit.

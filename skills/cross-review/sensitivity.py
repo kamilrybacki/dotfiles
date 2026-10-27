@@ -9,7 +9,8 @@ Rules:
 - path globs: infra (helm, charts, ansible, argocd, terraform, k8s, .github/workflows,
   Dockerfile, compose), secrets (.env, *secret*, *credential*, keys, vault, sops),
   network (wireguard, caddy, cloudflared, iptables, ufw, /etc)
-- content regexes: private keys, API tokens, private IPv4 (192.168.x.x, 10.x.x.x)
+- content regexes: private keys, API/Vault/Bearer/JWT tokens, Google/AWS/Slack keys,
+  credential assignments (password=..., api_key: ...), private IPv4 (192.168.x.x, 10.x.x.x)
 
 Callers classify the EXACT outgoing payload, not a summary of it.
 
@@ -50,6 +51,13 @@ CONTENT = [
     ("API key (sk-)", re.compile(r"\bsk-[A-Za-z0-9_-]{20,}")),
     ("AWS access key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
     ("Slack token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}")),
+    ("Vault token", re.compile(r"\bhv[sbr]\.[A-Za-z0-9_-]{20,}")),
+    ("JWT", re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]+")),
+    ("Bearer token", re.compile(r"Bearer\s+[A-Za-z0-9._~+/-]{20,}")),
+    ("Google API key", re.compile(r"\bAIza[0-9A-Za-z_-]{35}")),
+    ("credential assignment", re.compile(
+        r"(?i)\b(?:password|passwd|pwd|secret|api[_-]?key|access[_-]?key|auth[_-]?token|token"
+        r"|private[_-]?key)\b[\"']?\s*[:=]\s*[\"']?[^\s\"'#]{8,}")),
     ("private IP address", re.compile(r"\b192\.168\.\d{1,3}\.\d{1,3}\b|\b10\.\d{1,3}\.\d{1,3}\.\d{1,3}\b")),
 ]
 
