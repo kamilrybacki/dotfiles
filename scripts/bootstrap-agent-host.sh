@@ -10,9 +10,10 @@
 #   2. npm install (pinned rulesync)
 #   3. Claude Code plugins + marketplaces          (plugins/restore.sh)
 #   4. graft CLI (code-nav MCP server)             (npm, ~/.local)
-#   5. jev-gate hooks                              (jev/install.sh)
+#   5. cleanup of the removed Jev layer, if a host still has it
+#      (scripts/lib/jev-cleanup.sh; idempotent, no-op on a clean host)
 #   6. instructions, MCP, settings, hooks, rules   (npm run agents:sync)
-#   7. secrets: cellarette edge token + Jev key, from Vault when reachable,
+#   7. secrets: cellarette edge token, from Vault when reachable,
 #      otherwise prints the one command to run. Never prints a secret.
 #   8. verifies the cellarette MCP endpoint answers and agents:check is clean.
 #
@@ -24,7 +25,6 @@ cd "$(dirname "$0")/.."
 GRAFT_VERSION="0.10.1"
 LOCAL_BIN="$HOME/.local/bin"
 CELLARETTE_TOKEN="${XDG_CONFIG_HOME:-$HOME/.config}/cellarette/token"
-JEV_KEY="$HOME/.config/jev/api_key"
 todo=()
 
 step() { printf '\n== %s ==\n' "$*"; }
@@ -84,8 +84,9 @@ if [ "$(graft --version 2>/dev/null | head -1)" != "$GRAFT_VERSION" ]; then
 fi
 echo "graft: $(graft --version 2>/dev/null | head -1)"
 
-step "jev-gate"
-bash jev/install.sh
+step "jev cleanup (removed decision layer)"
+. scripts/lib/jev-cleanup.sh
+jev_cleanup "$PWD"
 
 step "agents:sync"
 npm run --silent agents:sync
@@ -101,13 +102,6 @@ elif vault_ready; then
   cellarette-token-sync
 else
   todo+=("cellarette token: VAULT_ADDR=http://<vault>:8200 cellarette-token-sync   (or: cellarette-token-sync --stdin)")
-fi
-if [ -s "$JEV_KEY" ] || [ -n "${TYPESAFE_API_KEY:-}" ]; then
-  echo "jev: key present"
-elif vault_ready; then
-  jev-key-sync
-else
-  todo+=("jev key: VAULT_ADDR=http://<vault>:8200 jev-key-sync")
 fi
 # This script runs in a non-interactive shell that never sources the rc files,
 # so an unset variable here does not mean the user's shells lack it.

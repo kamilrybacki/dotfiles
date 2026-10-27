@@ -18,8 +18,7 @@ It is local-only: it reads token counts, never prompts, and sends nothing anywhe
   the detail. Quote its numbers; never estimate cost yourself.
 - **Read-only by default.** `optimaizr apply <rule>` changes `~/.claude/settings.json` or
   `~/.codex/config.toml`. Only run it when the operator asks, and say how to `undo` it.
-  Never `verify`, which replays requests on a paid API key. Never enable its Jev egress
-  (`OPTIMAIZR_JEV`).
+  Never `verify`, which replays requests on a paid API key. Never enable its external egress.
 - **Habits it rewards** (the operator's sessions spend about 2/3 on re-reading context):
   compact or `/clear` with a handoff note when you change topic, and keep tool output
   small (grep/head instead of cat; offset+limit on big files).

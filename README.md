@@ -100,7 +100,7 @@ Your `.zshrc` will source that file automatically if it exists.
 ## Agent setup — reproduce on any machine
 
 The Claude Code + Codex setup (instructions, MCP servers, plugins, hooks,
-settings, rules, graft, jev-gate) is rebuilt from this repo with one idempotent
+settings, rules, graft) is rebuilt from this repo with one idempotent
 command. Re-run it after every `git pull`.
 
 ```bash
@@ -119,8 +119,7 @@ VAULT_ADDR=http://<vault>:8200 cellarette-token-sync   # on the LAN / WireGuard
 cellarette-token-sync --stdin                          # anywhere else: paste it
 ```
 
-The bootstrap prints whatever is left to do (token, Jev key, PATH, Codex env
-var). Details: [`.rulesync/AGENTS-SYNC.md`](.rulesync/AGENTS-SYNC.md).
+The bootstrap prints whatever is left to do (token, PATH, Codex env var). Details: [`.rulesync/AGENTS-SYNC.md`](.rulesync/AGENTS-SYNC.md).
 
 No SSH key on the machine? Clone over HTTPS instead
 (`git clone https://github.com/kamilrybacki/dotfiles.git`, after `gh auth login`
