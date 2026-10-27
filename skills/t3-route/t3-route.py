@@ -158,9 +158,19 @@ def show(p):
         print("Review:  after the run, /cross-review from a Claude thread on that branch")
 
 
+def never_started(p, res):
+    """True only when T3 rejected the project before starting a thread. A started thread
+    prints to stdout, and under --wait exit 1/2 mean it ran, so a retry would run it twice."""
+    if res.returncode == 0 or res.stdout.strip():
+        return False
+    if "--wait" in p["argv"] and res.returncode in (1, 2):
+        return False
+    return "project" in res.stderr.lower()
+
+
 def run(p):
     res = subprocess.run(p["argv"], input=p["message"], text=True, capture_output=True)
-    if res.returncode != 0 and "project" in res.stderr.lower():
+    if never_started(p, res):
         print("t3-route: T3 does not know the project; registering it, then one retry", file=sys.stderr)
         add = subprocess.run(p["add_argv"], text=True, capture_output=True)
         sys.stderr.write(add.stdout + add.stderr)
