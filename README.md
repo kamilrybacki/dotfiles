@@ -189,7 +189,7 @@ Two skills, both shipped by `agents:sync` to Claude Code on every host.
 |---|---|---|---|
 | Implementer | Claude | Claude Code / T3 Code | always |
 | Reviewer A | Codex: `gpt-6-luna` (rank 1-2), `gpt-6.1-sol` (rank 3) | `codex exec`, read-only sandbox | always |
-| Reviewer B | Kimi K3 (OpenCode Go, agent `reviewer`) | `opencode run --agent reviewer` | rank >= 2 and data not restricted |
+| Reviewer B | Kimi K3 (OpenCode Go, agent `reviewer`) | `opencode run --agent reviewer` | rank >= 2 and payload standard |
 | Generator / judges (bulk data) | `deepseek/deepseek-chat`, `groq/gpt-oss-120b` | LiteLLM (`gen-validate`) | data labelling only, never OpenCode Go |
 
 **Rank rules** (`skills/cross-review/rank.sh`, deterministic; the skill may raise, never lower):
@@ -200,26 +200,31 @@ Two skills, both shipped by `agents:sync` to Claude Code on every host.
   migrations, public API/contracts, dependency or lockfiles, or > 400 changed lines.
   Codex sol medium + Reviewer B.
 
-**Sensitivity gate.** Tier = max(deterministic rules, jev), from `skills/cross-review/sensitivity.py`.
-Deterministic restricted hits always win: infra paths (helm, charts, ansible, argocd,
-terraform, k8s, `.github/workflows`, Dockerfile, compose), secrets paths (`.env`, `*secret*`,
-`*credential*`, keys, vault, sops), network paths (wireguard, caddy, cloudflared, iptables,
-ufw, `/etc`), and content with private keys, tokens, or 192.168.x / 10.x addresses.
-jev "restricted" also wins. jev "uncertain" or unavailable with clear rules gives
-`standard` (cross-review may use Reviewer B). `restricted` means no OpenCode Go reviewer
-and no open or Chinese model. Codex is first-party and still runs. For gen-validate,
-jev uncertain needs an operator-confirmed `--data-class open`. Restricted data is refused even with the flag.
+**Sensitivity gate (deterministic only).** `skills/cross-review/sensitivity.py` is the only
+gate. It has no LLM and no external classifier. It inspects the exact text being sent:
+the full diff for cross-review, and the decoded JSON strings plus instructions and rubric
+for gen-validate. Any hit means `restricted`:
+
+- paths: infra (helm, charts, ansible, argocd, terraform, k8s, `.github/workflows`,
+  Dockerfile, compose), secrets (`.env`, `*secret*`, `*credential*`, keys, vault, sops),
+  network (wireguard, caddy, cloudflared, iptables, ufw, `/etc`);
+- content: private keys, API tokens, private IPv4 (192.168.x.x, 10.x.x.x).
+
+No hit means `standard`. A restricted hit means first-party models only. Restricted data
+never goes to OpenCode Go, open-weight, or China-hosted endpoints. Codex is first-party
+and still runs. Reviewer B is refused. gen-validate refuses the run. No override flag exists.
 
 **Go vs LiteLLM.** The OpenCode Go subscription is for interactive coding only. Bulk
 generation and judging go through the homelab LiteLLM API (`gen-validate` refuses
-OpenCode Go endpoints). `opencode/agent/` ships only `reviewer`.
+OpenCode Go endpoints). `opencode/agent/` ships only `reviewer`. That agent denies every
+tool except read, grep, glob and list, with secret-named reads denied too.
 
 **Use it from T3 Code.**
 
 - Claude thread: finish the change, commit, then run `/cross-review [base-ref]` in the
   same thread. Claude consolidates and fixes. Max 3 rounds.
 - OpenCode thread: `@reviewer` reviews the current diff read-only. Its answer ends in a
-  `VERDICT:` line. It does not edit or run commands.
+  `VERDICT:` line. It does not edit, run commands, or call MCP tools.
 - Data labelling: run `/gen-validate` in a Claude thread. It is not an OpenCode agent.
 
 **Install** (on each host, lw-main and the WSL laptop):
@@ -230,7 +235,8 @@ git pull && npm run agents:sync
 
 The sync copies `skills/cross-review` and `skills/gen-validate` into `~/.claude/skills/`
 and `opencode/agent/*.md` into `~/.config/opencode/agent/`. It never deletes files.
-Restart OpenCode after syncing.
+Restart OpenCode after syncing. Set `LITELLM_BASE_URL` to the homelab LiteLLM LAN URL on
+hosts that cannot use the script default.
 
-**Needs:** `codex` (Codex CLI), `opencode` 1.19+ (for Reviewer B), `jev-gate`,
-`python3`. Vault access on lw-main for the LiteLLM key, or `LITELLM_GEN_KEY`.
+**Needs:** `codex` (Codex CLI), `opencode` 1.19+ (for Reviewer B), `python3`. Vault access
+on lw-main for the LiteLLM key, or `LITELLM_GEN_KEY`.

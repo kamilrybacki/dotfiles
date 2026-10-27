@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """gen-validate: cheap generator -> two independent judges -> keep agreed items -> sample for spot-check.
 
-Bulk traffic goes ONLY through the homelab LiteLLM OpenAI-compatible API.
-OpenCode Go is for coding agents; it is never used here.
+Bulk traffic goes ONLY through the homelab LiteLLM OpenAI-compatible API (LITELLM_BASE_URL).
+OpenCode Go is never used here. Data gating is deterministic only (sensitivity.py):
+restricted hits refuse the run, and never reach open or China-hosted endpoints.
 
 Input : JSONL, one item per line: {"id": "...", "input": "..."} ("prompt" also accepted).
 Task  : --instructions FILE (generator system prompt), --rubric FILE (judge system prompt).
 Output: DIR/{generated,judged,kept,disagree,sample}.jsonl, summary.json, summary.md
-Exit  : 0 ok, 2 bad args, 4 data not allowed (restricted/unknown tier), 5 no API key.
+Exit  : 0 ok, 2 bad args, 4 restricted data refused, 5 no API key.
 """
 import argparse
 import concurrent.futures as cf
@@ -21,14 +22,14 @@ import time
 import urllib.error
 import urllib.request
 
-# Shared sensitivity classifier lives next to the cross-review skill.
+# Shared deterministic classifier lives next to the cross-review skill.
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "cross-review"))
 try:
     import sensitivity  # noqa: E402
 except ImportError:
     sensitivity = None
 
-DEFAULT_BASE = "http://192.168.0.60:30400/v1"
+DEFAULT_BASE = "http://192.168.0.60:30400/v1"  # override with LITELLM_BASE_URL
 DEFAULT_GEN = "deepseek/deepseek-chat"
 DEFAULT_JUDGE_A = "deepseek/deepseek-chat"
 DEFAULT_JUDGE_B = "groq/gpt-oss-120b"
@@ -60,10 +61,7 @@ def parse_args(argv):
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--price-in-per-m", type=float, default=0.0, help="USD per 1M input tokens (optional)")
     p.add_argument("--price-out-per-m", type=float, default=0.0, help="USD per 1M output tokens (optional)")
-    p.add_argument("--data-class", choices=["open"],
-                   help="operator-confirmed: data is synthetic/public, no customer data, no infra/secrets. "
-                        "Only needed when jev is uncertain. Never set it on your own.")
-    p.add_argument("--dry-run", action="store_true", help="validate args, tier and plan; no network, no key")
+    p.add_argument("--dry-run", action="store_true", help="validate args and gate; no network, no key")
     a = p.parse_args(argv)
     if a.judge_a == a.judge_b:
         die(2, "--judge-a and --judge-b must differ (independent judges)")
@@ -77,39 +75,55 @@ def parse_args(argv):
 
 
 def load_items(path):
-    items = []
+    """Parses JSONL. Returns (items, decoded_strings). Classification uses DECODED values,
+    so JSON escapes (e.g. \\u0031 for '1') cannot hide restricted content."""
+    items, decoded = [], []
     with open(path, encoding="utf-8") as fh:
         for n, line in enumerate(fh, 1):
             line = line.strip()
             if not line:
                 continue
-            obj = json.loads(line)
+            try:
+                obj = json.loads(line)
+            except ValueError:
+                die(2, f"items line {n}: invalid JSON")
             inp = obj.get("input", obj.get("prompt"))
-            if inp is None:
-                die(2, f"items line {n}: missing 'input' (or 'prompt')")
+            if not isinstance(inp, str):
+                die(2, f"items line {n}: 'input' (or 'prompt') must be a string")
             items.append({"id": str(obj.get("id", n)), "input": inp})
+            decoded.extend(sensitivity_strings(obj))
     if not items:
         die(2, "no items")
-    return items
+    return items, decoded
 
 
-def sensitivity_gate(args, items_path, n_items):
-    """max(deterministic rules, jev). Restricted always refuses, even with --data-class.
-    jev uncertain/unavailable refuses unless the operator passed --data-class open."""
+def sensitivity_strings(obj):
+    """Every decoded string in one item, including keys and ids."""
+    stack, out = [obj], []
+    while stack:
+        v = stack.pop()
+        if isinstance(v, str):
+            out.append(v)
+        elif isinstance(v, dict):
+            for k, val in v.items():
+                out.append(str(k))
+                stack.append(val)
+        elif isinstance(v, list):
+            stack.extend(v)
+    return out
+
+
+def sensitivity_gate(args, items_path, decoded, instructions, rubric):
+    """Deterministic gate on everything sent to the models. Any hit refuses the run."""
     if sensitivity is None:
         die(4, "sensitivity module missing (skills/cross-review/sensitivity.py): refusing")
     paths = [p for p in (items_path, args.instructions, args.rubric) if p]
-    texts = []
-    for p in paths:
-        with open(p, encoding="utf-8", errors="replace") as fh:
-            texts.append((os.path.basename(p), fh.read()))
-    rep = sensitivity.classify(f"gen-validate {n_items} items", paths, texts)
+    texts = [("decoded items", "\n".join(decoded)), ("generator instructions", instructions),
+             ("judge rubric", rubric)]
+    rep = sensitivity.classify(paths, texts)
     if rep["tier"] == "restricted":
-        die(4, "refusing: restricted data (even --data-class cannot override): " + "; ".join(rep["reasons"]))
-    if rep["uncertain"] and args.data_class != "open":
-        die(4, "jev is uncertain about this data and deterministic rules are clear. The operator must "
-               "confirm the data is open (synthetic or public, no customer data, no infra or secrets), "
-               "then re-run with --data-class open. Do not set this flag yourself.")
+        die(4, "refusing: restricted data (deterministic rules). Restricted data never goes to "
+               "open or China-hosted endpoints. Hits: " + "; ".join(rep["reasons"]))
     return rep
 
 
@@ -153,7 +167,7 @@ def chat(base, key, model, system, user, max_tokens, retries=2):
                 time.sleep(2 ** attempt)
                 continue
             break
-        except Exception as e:  # network/timeout/parse: retry, then report the class only
+        except Exception as e:  # report the exception class only, never request data
             err = type(e).__name__
             if attempt < retries:
                 time.sleep(2 ** attempt)
@@ -181,7 +195,7 @@ def judge(args, key, model, rubric, item, output):
     if res["error"]:
         reason = res["error"]
     elif verdict is None:
-        reason = "empty or unparsable judge reply"  # counts as a failure, not a verdict
+        reason = "empty or unparsable judge reply"  # a failure, not a verdict
     else:
         reason = verdict.get("reason", "")
     return {"model": model, "status": status, "ok": verdict["ok"] if status == "ok" else None,
@@ -194,6 +208,11 @@ def run_item(args, key, rubric, gen_sys, item):
         return {"id": item["id"], "input": item["input"], "output": None, "stage": "gen_failed",
                 "gen_error": gen["error"] or "empty", "judges": [], "gen_in": gen["in"],
                 "gen_out": gen["out"], "gen_cost": gen["cost"]}
+    # Generated output is part of the judge payload: classify it before sending.
+    if sensitivity is not None and sensitivity.classify([], [("generated output", gen["content"])])["tier"] == "restricted":
+        return {"id": item["id"], "input": item["input"], "output": None, "stage": "blocked_restricted",
+                "gen_error": None, "judges": [], "gen_in": gen["in"], "gen_out": gen["out"],
+                "gen_cost": gen["cost"]}
     with cf.ThreadPoolExecutor(max_workers=2) as pool:
         fa = pool.submit(judge, args, key, args.judge_a, rubric, item, gen["content"])
         fb = pool.submit(judge, args, key, args.judge_b, rubric, item, gen["content"])
@@ -227,8 +246,9 @@ def summarize(args, results, tier):
     priced = (tok_in * args.price_in_per_m + tok_out * args.price_out_per_m) / 1e6
     return {
         "tier": tier, "generator": args.generator, "judges": [args.judge_a, args.judge_b],
-        "items": n, "gen_failed": count("gen_failed"), "judge_error": count("judge_error"),
-        "kept": count("kept"), "rejected": count("rejected"), "disagree": count("disagree"),
+        "items": n, "gen_failed": count("gen_failed"), "blocked_restricted": count("blocked_restricted"),
+        "judge_error": count("judge_error"), "kept": count("kept"), "rejected": count("rejected"),
+        "disagree": count("disagree"),
         "kept_rate": round(count("kept") / n, 4) if n else 0.0,
         "judge_agreement_rate": round(agree / len(valid_pairs), 4) if valid_pairs else None,
         "tokens_in": tok_in, "tokens_out": tok_out,
@@ -256,12 +276,11 @@ def main(argv):
     if args.rubric:
         with open(args.rubric, encoding="utf-8") as fh:
             rubric = fh.read()
-    items = load_items(args.items)
-    rep = sensitivity_gate(args, args.items, len(items))
-    tier = rep["tier"]
-    plan = {"items": len(items), "tier": tier, "sensitivity": rep, "base_url": args.base_url, "generator": args.generator,
-            "judges": [args.judge_a, args.judge_b], "concurrency": args.concurrency,
-            "max_tokens_judge": args.max_tokens_judge}
+    items, decoded = load_items(args.items)
+    rep = sensitivity_gate(args, args.items, decoded, gen_sys, rubric)
+    plan = {"items": len(items), "tier": rep["tier"], "base_url": args.base_url,
+            "generator": args.generator, "judges": [args.judge_a, args.judge_b],
+            "concurrency": args.concurrency, "max_tokens_judge": args.max_tokens_judge}
     if args.dry_run:
         print("dry-run plan:", json.dumps(plan, indent=2))
         return 0
@@ -277,11 +296,10 @@ def main(argv):
     kept = [r for r in results if r["stage"] == "kept"]
     write_jsonl(os.path.join(args.out, "kept.jsonl"),
                 [{"id": r["id"], "input": r["input"], "output": r["output"]} for r in kept])
-    write_jsonl(os.path.join(args.out, "disagree.jsonl"),
-                [r for r in results if r["stage"] == "disagree"])
+    write_jsonl(os.path.join(args.out, "disagree.jsonl"), [r for r in results if r["stage"] == "disagree"])
     sample = random.Random(args.seed).sample(kept, min(args.sample, len(kept)))
     write_jsonl(os.path.join(args.out, "sample.jsonl"), sample)
-    summary = summarize(args, results, tier)
+    summary = summarize(args, results, rep["tier"])
     write_summary(args.out, summary, len(sample))
     print(json.dumps(summary, indent=2))
     return 0

@@ -1,26 +1,31 @@
 #!/usr/bin/env python3
-"""Sensitivity classifier shared by cross-review (rank.sh) and gen-validate.
+"""Deterministic sensitivity classifier. No LLM, no external classifier. Used by cross-review and gen-validate.
 
-Tier = max(deterministic rules, jev). Rules:
-- Deterministic RESTRICTED always wins (path globs and content regexes below).
-- jev "restricted" from a confident verdict also wins.
-- jev "uncertain" (source jev-uncertain) or unavailable is NOT an allow. The caller
-  decides. cross-review treats it as standard when deterministic rules are clear.
-  gen-validate requires an explicit operator-confirmed --data-class open flag.
+Tier: any rule hit -> "restricted"; no hit -> "standard".
+Restricted data may go only to first-party models. It must never go to OpenCode Go,
+open-weight, or China-hosted endpoints. These rules are the only gate.
+
+Rules:
+- path globs: infra (helm, charts, ansible, argocd, terraform, k8s, .github/workflows,
+  Dockerfile, compose), secrets (.env, *secret*, *credential*, keys, vault, sops),
+  network (wireguard, caddy, cloudflared, iptables, ufw, /etc)
+- content regexes: private keys, API tokens, private IPv4 (192.168.x.x, 10.x.x.x)
+
+Callers classify the EXACT outgoing payload, not a summary of it.
 
 CLI:
-  sensitivity.py git --repo DIR --base REF [--task T]     (changed files + added lines)
-  sensitivity.py files [--task T] PATH...                 (paths + their contents)
+  sensitivity.py git --repo DIR --base REF           paths + full diff text (base...HEAD)
+  sensitivity.py payload --repo DIR --base REF --text-file FILE
+                                                     paths + the exact outgoing prompt text
+  sensitivity.py files PATH...                       paths + file contents
 
-Prints JSON: {"tier", "deterministic", "jev", "uncertain", "reasons": [...]}.
-Never prints matched secret values or IP addresses.
+Prints JSON: {"tier": "standard|restricted", "reasons": [...]}. Never prints matched values.
 """
 import argparse
 import fnmatch
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 
@@ -46,72 +51,54 @@ CONTENT = [
     ("Slack token", re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}")),
     ("private IP address", re.compile(r"\b192\.168\.\d{1,3}\.\d{1,3}\b|\b10\.\d{1,3}\.\d{1,3}\.\d{1,3}\b")),
 ]
-JEV_TIERS = ("open", "standard", "restricted")
 
 
-def path_reason(path):
+def path_hits(path):
     p = path.lower()
     base = os.path.basename(p)
+    hits = []
     for label, pats in (("infra", INFRA), ("secrets", SECRETS), ("network", NETWORK)):
         for pat in pats:
             if fnmatch.fnmatch(p, pat) or fnmatch.fnmatch(base, pat):
-                return f"deterministic restricted: {label} path {path}"
-    return None
+                hits.append(f"restricted: {label} path {path}")
+                break
+    return hits
 
 
-def content_reasons(label, text):
-    return [f"deterministic restricted: {name} in {label}"
-            for name, rx in CONTENT if rx.search(text)]
+def content_hits(label, text):
+    return [f"restricted: {name} in {label}" for name, rx in CONTENT if rx.search(text)]
 
 
-def jev_verdict(task, paths, cwd=None):
-    """Returns (tier, note). tier is open|standard|restricted|uncertain."""
-    if not shutil.which("jev-gate"):
-        return "uncertain", "jev-gate unavailable"
-    cmd = ["jev-gate", "route", "--task", task]
+def classify(paths, texts):
+    """paths: file paths in the payload. texts: [(label, full text sent)]."""
+    reasons = []
     for p in paths:
-        cmd += ["--file", p]
-    r = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd)
-    try:
-        obj = json.loads(r.stdout)
-    except ValueError:
-        return "uncertain", "jev output unparsable"
-    tier, source = obj.get("tier", ""), obj.get("source", "")
-    if source == "jev-uncertain" or tier not in JEV_TIERS:
-        return "uncertain", source or "no source"
-    return tier, source
-
-
-def classify(task, paths, texts, cwd=None):
-    reasons = [r for r in (path_reason(p) for p in paths) if r]
+        reasons += path_hits(p)
     for label, text in texts:
-        reasons += content_reasons(label, text)
-    deterministic = "restricted" if reasons else "clear"
-    jev, note = jev_verdict(task, paths, cwd=cwd)
-    uncertain = jev == "uncertain"
-    if deterministic == "restricted":
-        tier = "restricted"
-    elif jev == "restricted":
-        tier = "restricted"
-        reasons.append(f"jev restricted ({note})")
-    elif uncertain:
-        tier = "standard"
-        reasons.append(f"jev uncertain ({note}) -> deterministic: standard "
-                       f"(no restricted path or content found)")
-    else:
-        tier = jev
-        reasons.append(f"jev {jev} ({note})")
-    return {"tier": tier, "deterministic": deterministic, "jev": jev,
-            "uncertain": uncertain, "reasons": reasons}
+        reasons += content_hits(label, text)
+    return {"tier": "restricted" if reasons else "standard", "reasons": reasons}
 
 
-def git_inputs(repo, base):
-    names = subprocess.check_output(
-        ["git", "-C", repo, "diff", "--name-only", f"{base}...HEAD"], text=True).split()
-    diff = subprocess.check_output(["git", "-C", repo, "diff", f"{base}...HEAD"], text=True)
-    added = "\n".join(l[1:] for l in diff.splitlines()
-                      if l.startswith("+") and not l.startswith("+++"))
-    return names, [("added lines", added)]
+def git_paths(repo, base):
+    out = subprocess.check_output(["git", "-C", repo, "diff", "--name-only", f"{base}...HEAD"], text=True)
+    return out.split()
+
+
+def git_diff(repo, base):
+    return subprocess.check_output(["git", "-C", repo, "diff", f"{base}...HEAD"], text=True)
+
+
+def decoded_strings(obj):
+    """Every string in a decoded JSON value, including object keys."""
+    if isinstance(obj, str):
+        yield obj
+    elif isinstance(obj, dict):
+        for k, v in obj.items():
+            yield str(k)
+            yield from decoded_strings(v)
+    elif isinstance(obj, list):
+        for v in obj:
+            yield from decoded_strings(v)
 
 
 def main(argv):
@@ -120,20 +107,25 @@ def main(argv):
     g = sub.add_parser("git")
     g.add_argument("--repo", required=True)
     g.add_argument("--base", required=True)
-    g.add_argument("--task", default="cross-review")
+    pl = sub.add_parser("payload")
+    pl.add_argument("--repo", required=True)
+    pl.add_argument("--base", required=True)
+    pl.add_argument("--text-file", required=True)
     f = sub.add_parser("files")
-    f.add_argument("--task", default="files")
     f.add_argument("paths", nargs="+")
     a = ap.parse_args(argv)
     if a.mode == "git":
-        paths, texts = git_inputs(a.repo, a.base)
-        report = classify(a.task, paths, texts, cwd=a.repo)
+        report = classify(git_paths(a.repo, a.base), [("diff", git_diff(a.repo, a.base))])
+    elif a.mode == "payload":
+        with open(a.text_file, encoding="utf-8", errors="replace") as fh:
+            text = fh.read()
+        report = classify(git_paths(a.repo, a.base), [("outgoing prompt", text)])
     else:
         texts = []
         for p in a.paths:
             with open(p, encoding="utf-8", errors="replace") as fh:
                 texts.append((os.path.basename(p), fh.read()))
-        report = classify(a.task, a.paths, texts)
+        report = classify(a.paths, texts)
     print(json.dumps(report))
     return 0
 

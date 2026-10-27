@@ -4,7 +4,7 @@
 # Usage: rank.sh --repo DIR --base REF [--min-rank N]
 #
 # Prints key=value lines (reason= repeats):
-#   rank, codex_model, codex_effort, reviewer_b (yes|no), tier, files, lines, reason=...
+#   rank, codex_model, codex_effort, reviewer_b (yes|no), tier (standard|restricted), files, lines, reason=...
 #
 # Rank 1 trivial (docs/tests only, <=150 changed lines)
 # Rank 2 normal feature/bugfix (default)
@@ -95,17 +95,16 @@ if [ "$min_rank" -gt "$rank" ]; then
   rank=$min_rank
 fi
 
-# Sensitivity: max(deterministic rules, jev). See sensitivity.py for the rules.
-# jev uncertain/unavailable + clear rules -> standard; any restricted hit -> restricted.
-sens=$(python3 "$here/sensitivity.py" git --repo "$repo" --base "$base" \
-         --task "cross-review $base...HEAD" 2>/dev/null) || sens='{"tier": "restricted", "reasons": ["sensitivity.py failed"]}'
+# Sensitivity: deterministic rules only (sensitivity.py). Any hit -> restricted.
+sens=$(python3 "$here/sensitivity.py" git --repo "$repo" --base "$base" 2>/dev/null) \
+  || sens='{"tier": "restricted", "reasons": ["sensitivity.py failed"]}'
 tier=$(printf '%s' "$sens" | python3 -c '
 import json, sys
 try:
     t = json.load(sys.stdin).get("tier", "")
 except Exception:
     t = ""
-print(t if t in ("open", "standard", "restricted") else "restricted")')
+print(t if t in ("standard", "restricted") else "restricted")')
 sens_reasons=$(printf '%s' "$sens" | python3 -c '
 import json, sys
 try:
@@ -113,7 +112,7 @@ try:
 except Exception:
     print("sensitivity output unparsable")')
 while IFS= read -r r; do [ -n "$r" ] && reasons+=("$r"); done <<<"$sens_reasons"
-[ "$tier" = restricted ] && reasons+=("tier=restricted: no OpenCode Go / open-model reviewer")
+[ "$tier" = restricted ] && reasons+=("tier=restricted: first-party models only; no OpenCode Go or open/China-hosted models")
 
 case "$rank" in
   1) codex_model=gpt-6-luna; codex_effort=low ;;
