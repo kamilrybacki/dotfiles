@@ -61,6 +61,9 @@ def parse_args(argv):
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--price-in-per-m", type=float, default=0.0, help="USD per 1M input tokens (optional)")
     p.add_argument("--price-out-per-m", type=float, default=0.0, help="USD per 1M output tokens (optional)")
+    p.add_argument("--allow-http-lan", action="store_true",
+                   help="accept a plaintext http:// base URL (homelab LAN only). The API key and data "
+                        "travel unencrypted. Operator decision; never set it on your own.")
     p.add_argument("--dry-run", action="store_true", help="validate args and gate; no network, no key")
     a = p.parse_args(argv)
     if a.judge_a == a.judge_b:
@@ -68,6 +71,10 @@ def parse_args(argv):
     for m in (a.generator, a.judge_a, a.judge_b):
         if m.startswith("opencode-go/") or "opencode" in a.base_url:
             die(2, f"refusing {m}: OpenCode Go is not for bulk data; use LiteLLM")
+    if a.base_url.startswith("http://") and not a.allow_http_lan \
+            and not re.match(r"http://(127\.0\.0\.1|localhost)[:/]", a.base_url):
+        die(2, "plaintext http:// base URL: the API key and data would travel unencrypted. "
+               "Use https://, or the operator passes --allow-http-lan for the homelab LAN")
     if a.concurrency < 1 or a.sample < 0:
         die(2, "--concurrency must be >= 1 and --sample >= 0")
     a.max_tokens_judge = max(a.max_tokens_judge, MIN_JUDGE_TOKENS)

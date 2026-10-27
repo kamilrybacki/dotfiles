@@ -30,6 +30,19 @@ implement, consolidate and fix. Reviewers never edit files. Never merge.
    secrets, DB migrations, public API/contracts, dependency or lockfiles, or > 400
    changed lines (Codex `gpt-6.1-sol` medium + B).
 
+2b. **Jev advisory (optional, raise-only).** Only when `tier` is `standard`. Never when
+   restricted. Jev is third-party and advisory only. It never lowers anything, and a failure
+   or low confidence means "ignored". Steps:
+   1. Write a summary of at most 3 plain sentences, with no code, no paths and no secrets.
+   2. Run `python3 "$SKILL/jev-advice.py" rank-state --repo "$PWD" --base "$BASE" --rank <N> --tier standard --summary "<summary>" --reason "<each rank reason>"`.
+      It prints a JSON request. Use exactly that JSON.
+   3. Call `mcp__cellarette__jev__ask` with `state` and `questions` from that JSON.
+      Save the whole response to `jev.json`.
+   4. Run `python3 "$SKILL/jev-advice.py" rank-result --rank <N> --answer jev.json`.
+      It prints `Jev raised rank X->Y (conf Z)` or `Jev advisory ignored (reason)`, and a last line `rank=<R>`.
+   5. If raised, re-run `rank.sh --min-rank <R>`, which only raises, and use the new rank.
+      Print the Jev line either way. Any Jev error or timeout means "ignored". Continue.
+
 3. **Sensitivity (deterministic only).** `tier` comes from `sensitivity.py` over the
    full diff text (added, removed and context lines) and the changed paths. Any hit
    means `restricted`. No hit means `standard`. Restricted hits: infra paths (helm,
@@ -78,3 +91,6 @@ implement, consolidate and fix. Reviewers never edit files. Never merge.
   still surface restricted text from unchanged files. The payload gate covers only what is
   sent in the prompt. Treat that as a known gap.
 - Offline checks: `python3 sensitivity.py files <file>` prints the tier and reasons.
+- Jev never receives diffs, code or secrets. It sees only the metadata in step 2b (paths,
+  +/- counts, rank reasons, and the summary). It is not a gate, so it cannot block or
+  downgrade a review.

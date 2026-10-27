@@ -35,7 +35,9 @@ Defaults: generator `deepseek/deepseek-chat`; judges `deepseek/deepseek-chat` an
    - Generated outputs are classified before the judges see them. A hit stores the item as
      `blocked_restricted` and sends nothing to the judges.
 
-3. **Run.** Same command without `--dry-run`. The key comes from `LITELLM_GEN_KEY`, or
+3. **Run.** Same command without `--dry-run`. The default base URL is plaintext `http://`
+   on the homelab LAN, so the script refuses it unless the operator passes
+   `--allow-http-lan`. Ask the operator first. Never set that flag on your own. The key comes from `LITELLM_GEN_KEY`, or
    the script reads Vault `secret/homelab/litellm/gen-validate#api_key` itself
    (`VAULT_ADDR`, default `http://127.0.0.1:8200`). Never print or echo the key. Judges
    use `max_tokens >= 300`, because gpt-oss is a reasoning model and returns empty content
