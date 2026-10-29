@@ -1,6 +1,6 @@
 ---
 root: true
-targets: ["claudecode", "codexcli", "hermesagent"]
+targets: ["claudecode", "codexcli", "hermesagent", "pi"]
 description: "Jev decision layer: typed per-turn harness decisions (shared: Claude Code + Codex + Hermes)"
 globs: ["**/*"]
 ---

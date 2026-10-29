@@ -16,9 +16,10 @@ agent's native file from it.
   25-openviking-kb-hermes.md targets: hermesagent               (Hermes variant)
   30-claude-graft.md         targets: claudecode                (Claude only)
   30-codex-nav.md            targets: codexcli                  (Codex only)
+  30-pi-scope.md             targets: pi                        (Pi only)
   05-hermes-conventions.md   targets: hermesagent               (Hermes only)
   40-hermes-facts.md         targets: hermesagent               (Hermes only)
-  50-jev-decisions.md        targets: claudecode, codexcli, hermesagent (shared; see jev/README.md)
+  50-jev-decisions.md        targets: claudecode, codexcli, hermesagent, pi (shared; see jev/README.md)
 ```
 
 Every rule is `root: true`, so all rules for one target combine into a single
@@ -31,6 +32,7 @@ inlined file (needed for Codex/Hermes, which cannot `@import`). Filename prefixe
 |---------------|-----------------|-----------------------------------------|--------------|
 | Claude Code   | `claudecode`    | `~/.claude/CLAUDE.md`                    | direct (global) |
 | Codex         | `codexcli`      | `~/.codex/AGENTS.md`                     | direct (`-o ~/.codex`) |
+| Pi            | `pi`            | `~/.pi/agent/AGENTS.md`                  | direct (`-o ~/.pi/agent`); `pi/extensions/*.ts` copied to `~/.pi/agent/extensions/` |
 | Hermes        | `hermesagent`   | `helm/charts/hermes/files/AGENTS.md`    | staged → commit + PR → ArgoCD → ConfigMap → PVC |
 
 `rulesync.jsonc` sets `delete: false` so the `~/.claude/rules/` tree (Claude-only

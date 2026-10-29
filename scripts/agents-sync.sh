@@ -29,6 +29,17 @@ bash cellarette/install.sh
 mcp_generate claudecode
 "$RS" generate --targets codexcli --features rules -o "$HOME/.codex"
 mcp_generate codexcli
+# Pi: rules only (rulesync's pi target has no MCP; Pi has no MCP client) plus our
+# extensions. models.json/auth.json hold the LiteLLM key and stay host-local.
+PI_DIR="${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}"
+if command -v pi >/dev/null || [ -d "$PI_DIR" ]; then
+  mkdir -p "$PI_DIR/extensions"
+  "$RS" generate --targets pi --features rules -o "$PI_DIR"
+  for f in pi/extensions/*.ts; do
+    [ -f "$f" ] && cp -f "$f" "$PI_DIR/extensions/$(basename "$f")"
+  done
+  echo "pi: rules + $(ls pi/extensions/*.ts | wc -l) extension(s) synced to $PI_DIR"
+fi
 
 # Claude Code home: settings.json merge (plugins, env, hooks), hooks, RTK.md,
 # rules/ tree. Additive; never touches permissions or secrets.
