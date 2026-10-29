@@ -45,8 +45,10 @@ QUESTIONS = {
                          "export pattern; fix the failing test in parser.py.",
             "review": "Critically check an existing change, patch, plan or artifact for bugs, "
                       "security and design flaws. Example: review this diff before merge.",
-            "mechanical": "Apply a fully specified transformation with no judgment. Example: "
-                          "rename a variable in one file; reformat a list.",
+            "mechanical": "Apply a fully specified, repetitive transformation whose exact result "
+                          "follows from the instruction, with no design choice. Examples: rename "
+                          "a function everywhere; replace every print call with logger.info; sort "
+                          "imports; bump a version string; translate comments; reformat a list.",
             "other": "The deliverable cannot be identified from the description.",
         },
     ),

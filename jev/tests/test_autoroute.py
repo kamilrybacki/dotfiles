@@ -223,3 +223,12 @@ def test_top_efforts_always_ask(fake_jev, t3, tool_name, tool_input):
 def test_routing_never_picks_top_efforts():
     tables = [model_route.CLAUDE, model_route.GPT, model_route.DEEPSEEK, model_route.CODEX_IMPLEMENT]
     assert not any(model_route.confirmation_reason(t) for table in tables for t in table)
+
+
+def test_clearly_mechanical_goes_to_pi_borderline_to_implement():
+    threshold = model_route.P_MECHANICAL_PI
+    assert model_route.pick_role({"mechanical": threshold, "implement": 1 - threshold}) == ("mechanical", None)
+    role, reason = model_route.pick_role({"mechanical": threshold - 0.01, "implement": 1.01 - threshold})
+    assert role == "implement" and reason
+    assert model_route.targets("mechanical", 0, restricted=False)[0] == model_route.PI
+    assert model_route.targets("mechanical", 0, restricted=True)[0]["providerInstanceId"] == "codex"
