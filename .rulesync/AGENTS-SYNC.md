@@ -18,8 +18,7 @@ agent's native file from it.
   30-codex-nav.md            targets: codexcli                  (Codex only)
   05-hermes-conventions.md   targets: hermesagent               (Hermes only)
   40-hermes-facts.md         targets: hermesagent               (Hermes only)
-  55-area-gotchas.md         targets: claudecode, codexcli      (always-on area gotchas)
-  60-optimaizr.md            targets: claudecode, codexcli      (token-spend analysis)
+  50-jev-decisions.md        targets: claudecode, codexcli, hermesagent (shared; see jev/README.md)
 ```
 
 Every rule is `root: true`, so all rules for one target combine into a single
@@ -40,7 +39,7 @@ language rules, installed by `scripts/claude-home.py`) is NEVER pruned by rulesy
 ## Commands
 
 ```bash
-npm run agents:bootstrap  # new machine: prereqs, plugins, graft, sync, secrets, verify
+npm run agents:bootstrap  # new machine: prereqs, plugins, graft, jev, sync, secrets, verify
 npm install            # once — installs the pinned rulesync
 npm run agents:sync    # regenerate every agent file from .rulesync/
 npm run agents:check   # drift guard: non-zero exit if any file is out of sync (CI / pre-commit)

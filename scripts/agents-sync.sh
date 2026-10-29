@@ -15,11 +15,6 @@ HELM_REPO="${HELM_REPO:-$HOME/Code/helm}"
 HERMES_FILE="$HELM_REPO/charts/hermes/files/AGENTS.md"
 
 . scripts/lib/stage-mcp.sh
-. scripts/lib/jev-cleanup.sh
-
-# Hosts that still carry the removed Jev layer: strip its hooks and symlinks.
-# Idempotent; does nothing on a clean host.
-jev_cleanup "$PWD"
 
 # Helpers on PATH first: cellarette-headers is the MCP headersHelper below.
 bash cellarette/install.sh
