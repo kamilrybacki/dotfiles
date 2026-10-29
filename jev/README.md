@@ -23,7 +23,9 @@ at the harness's high-frequency decision points.
   `redact.py` before they leave the host. Unit tests cover this.
 - **Fails open (hooks), fails closed (route).** If the API is down, slow (2s
   default, `JEV_TIMEOUT`) or the key is missing, hooks print nothing and the
-  harness behaves exactly as before. `route` falls back to `restricted`.
+  harness behaves exactly as before. `route` falls back to `restricted`; the only exception is a split between
+  `open` and `standard` with P(restricted) < 0.05 and P(other) < 0.2, which
+  becomes `standard` (never `open`).
 - **Audit log.** Every decision goes to `~/.local/state/jev/decisions.jsonl`
   (redacted, command truncated to 300 chars).
 
