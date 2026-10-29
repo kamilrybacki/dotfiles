@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Thin launcher; resolves the package next to this script even through a symlink.
+here="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+PYTHONPATH="$here${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m jev_gate.cli "$@"

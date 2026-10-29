@@ -23,6 +23,7 @@
   // dialog); headless `claude -p` in an untrusted dir connects without headers.
   "mcpServers": {
     "graft": { "command": "graft", "args": ["mcp"] },
+    "jcodemunch": { "command": "uvx", "args": ["--from", "jcodemunch-mcp==1.108.401", "jcodemunch-mcp"] },
     "cellarette-operator": { "targets": ["claudecode"], "type": "http", "url": "https://cellarette-mcp.kamilandrzejrybacki.dpdns.org/mcp?profile=operator", "headersHelper": "cellarette-headers" },
     "cellarette": { "type": "http", "url": "https://cellarette-mcp.kamilandrzejrybacki.dpdns.org/mcp?profile=workspace", "headersHelper": "cellarette-headers" }
   }
