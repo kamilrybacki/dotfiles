@@ -17,6 +17,13 @@ mcp_generate claudecode --check || rc=1
 "$RS" generate --targets codexcli --features rules -o "$HOME/.codex" --check || rc=1
 mcp_generate codexcli --check || rc=1
 python3 scripts/claude-home.py check || rc=1
+PI_DIR="${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}"
+if [ -d "$PI_DIR" ]; then
+  "$RS" generate --targets pi --features rules -o "$PI_DIR" --check || rc=1
+  for f in pi/extensions/*.ts; do
+    cmp -s "$f" "$PI_DIR/extensions/$(basename "$f")" || { echo "DRIFT  pi extension: $(basename "$f")"; rc=1; }
+  done
+fi
 
 # Hermes: render to staging and byte-compare against the committed helm file.
 STAGE="$(mktemp -d)"; trap 'rm -rf "$STAGE"' EXIT
