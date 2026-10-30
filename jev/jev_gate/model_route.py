@@ -94,8 +94,8 @@ GPT = [_codex("gpt-6-luna", "medium"), _codex("gpt-6.1-terra", "medium"),
        _codex("gpt-6.1-sol", "high"), _codex("gpt-6.1-sol", "high")]
 DEEPSEEK = [_opencode("opencode-go/deepseek-v4.1-flash", "low"),
             _opencode("opencode-go/deepseek-v4.1-flash", "high"),
-            _opencode("opencode-go/deepseek-v4-pro", "high"),
-            _opencode("opencode-go/deepseek-v4-pro", "high")]
+            _opencode("opencode-go/deepseek-v4.1-flash", "high"),
+            _opencode("opencode-go/deepseek-v4.1-flash", "high")]
 # Restricted work: first-party models only, no Haiku/Luna.
 CLAUDE_RESTRICTED = [CLAUDE[1]] + CLAUDE[1:]
 GPT_RESTRICTED = [GPT[1]] + GPT[1:]

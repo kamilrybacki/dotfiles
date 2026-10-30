@@ -50,7 +50,7 @@ fix small findings.
    right. The user overrides all of this for one prompt with "bez routingu".
 
 3. **Announce the route** in one line, e.g.
-   `→ implement · material/high (standard) → opencode · deepseek-v4-pro · high; review → codex · gpt-6.1-sol · high`,
+   `→ implement · material/high (standard) → opencode · deepseek-v4.1-flash · high; review → codex · gpt-6.1-sol · high`,
    plus `reasons` if any.
 
 4. **Act by role.** Call `orchestrator_capabilities` once per thread before the first
@@ -81,8 +81,8 @@ trivial → low, limited → medium, material → high, critical → max.
 |---|---|---|---|
 | low | Haiku 5.5 · medium | deepseek-v4.1-flash · low (no review) | gpt-6-luna · medium |
 | medium | Sonnet 5.5 · medium | deepseek-v4.1-flash · high | gpt-6.1-terra · medium |
-| high | Sonnet 5.5 · high | deepseek-v4-pro · high | gpt-6.1-sol · high |
-| max | Opus 5.5 · high | deepseek-v4-pro · high | gpt-6.1-sol · high |
+| high | Sonnet 5.5 · high | deepseek-v4.1-flash · high | gpt-6.1-sol · high |
+| max | Opus 5.5 · high | deepseek-v4.1-flash · high | gpt-6.1-sol · high |
 
 The implement reviewer is the GPT model in the same row. Mechanical → Pi `default` (free),
 fallback Haiku. Capacity fallbacks: design ↔ GPT of the same row, review ↔ Claude of the same
