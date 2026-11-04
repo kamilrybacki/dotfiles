@@ -16,6 +16,7 @@ statusLine, ...) are only set when absent, so /model choices survive a sync.
 """
 import copy
 import filecmp
+import hashlib
 import json
 import os
 import shutil
@@ -30,7 +31,9 @@ CLAUDE = HOME / ".claude"
 SETTINGS = CLAUDE / "settings.json"
 
 EDGE_URL = "https://cellarette-mcp.kamilandrzejrybacki.dpdns.org/mcp?profile=workspace"
-HOOK_FILES = ["rtk-rewrite.sh", "ov-mirror-reminder.sh"]
+RTK_HOOK = "rtk-rewrite.sh"
+RTK_HASH = CLAUDE / "hooks" / ".rtk-hook.sha256"
+HOOK_FILES = [RTK_HOOK, "ov-mirror-reminder.sh"]
 
 
 def load_json(path: Path) -> dict:
@@ -93,6 +96,30 @@ def file_pairs() -> list[tuple[Path, Path]]:
     return pairs
 
 
+def rtk_hook_hash_line() -> str:
+    """The line rtk keeps in .rtk-hook.sha256 for the installed hook."""
+    digest = hashlib.sha256((CLAUDE / "hooks" / RTK_HOOK).read_bytes()).hexdigest()
+    return f"{digest}  {RTK_HOOK}\n"
+
+
+def trust_rtk_hook() -> None:
+    """Re-pin rtk's integrity hash to our hook.
+
+    rtk refuses to run ("hook integrity check FAILED") when the hook differs from
+    the hash it stored at `rtk init`; our hook is a modified copy, so pin it here.
+    """
+    if not (CLAUDE / "hooks" / RTK_HOOK).exists():
+        return
+    line = rtk_hook_hash_line()
+    if RTK_HASH.exists():
+        if RTK_HASH.read_text() == line:
+            return
+        RTK_HASH.chmod(0o644)
+    RTK_HASH.write_text(line)
+    RTK_HASH.chmod(0o444)
+    print(f"claude-home: pinned rtk hook hash in {RTK_HASH}")
+
+
 def sync() -> int:
     copied = 0
     for src, dst in file_pairs():
@@ -102,6 +129,7 @@ def sync() -> int:
         shutil.copy2(src, dst)
         copied += 1
     print(f"claude-home: {copied} file(s) updated under {CLAUDE}")
+    trust_rtk_hook()
 
     current = load_json(SETTINGS)
     new = merged_settings(current)
@@ -127,6 +155,11 @@ def check() -> int:
         if not (dst.exists() and filecmp.cmp(src, dst, shallow=False)):
             print(f"DRIFT  claude-home: {dst}")
             rc = 1
+    if (CLAUDE / "hooks" / RTK_HOOK).exists() and not (
+        RTK_HASH.exists() and RTK_HASH.read_text() == rtk_hook_hash_line()
+    ):
+        print(f"DRIFT  claude-home: {RTK_HASH}")
+        rc = 1
     current = load_json(SETTINGS)
     new = merged_settings(current)
     for key in sorted(k for k in new if new.get(k) != current.get(k)):
