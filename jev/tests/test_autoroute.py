@@ -26,6 +26,8 @@ def t3(monkeypatch, tmp_path):
     monkeypatch.setenv("T3CODE_THREAD_ID", "0b6f6a1e-1111-2222-3333-444455556666")
     monkeypatch.setenv("JEV_AUTOROUTE_STATE", str(tmp_path / "state"))
     monkeypatch.setenv("JEV_AUTOROUTE_CONFIG", str(tmp_path / "auto-route.json"))
+    monkeypatch.setenv("JEV_QUOTA_CACHE", str(tmp_path / "no-quotas.json"))
+    monkeypatch.setenv("JEV_USAGE_LOG", str(tmp_path / "usage.jsonl"))
     return tmp_path
 
 
@@ -103,7 +105,8 @@ def test_restricted_prompt_never_goes_to_opencode(fake_jev, t3):
     text = out["hookSpecificOutput"]["additionalContext"]
     assert "sensitivity=restricted" in text and "opencode" not in text.split("Restricted")[0]
     assert _delegate(model_route.DEEPSEEK[1])["hookSpecificOutput"]["permissionDecision"] == "deny"
-    assert _delegate(model_route.CODEX_IMPLEMENT[1]) is None
+    assert _delegate(model_route.IMPLEMENT_RESTRICTED[1]) is None  # Haiku is first-party
+    assert _delegate(model_route.GPT[1])["hookSpecificOutput"]["permissionDecision"] == "deny"  # Luna
 
 
 def test_dead_jev_fails_safe(dead_jev, t3):
@@ -178,10 +181,10 @@ def test_main_json_dispatches_stop(fake_jev, t3):
 
 
 def test_routing_never_picks_astra_or_fable():
-    tables = [model_route.CLAUDE, model_route.GPT, model_route.DEEPSEEK, model_route.CODEX_IMPLEMENT,
+    tables = [model_route.CLAUDE, model_route.GPT, model_route.DEEPSEEK, model_route.IMPLEMENT_RESTRICTED,
               model_route.CLAUDE_RESTRICTED, model_route.GPT_RESTRICTED]
     assert not any(model_route.needs_confirmation(t) for table in tables for t in table)
-    assert model_route.GPT[2]["model"] == "gpt-6.1-sol"
+    assert model_route.GPT[3]["model"] == "gpt-6.1-sol"
 
 
 @pytest.mark.parametrize("model", ["gpt-6-astra", "claude-fable-5-1", "fable"])
@@ -221,7 +224,7 @@ def test_top_efforts_always_ask(fake_jev, t3, tool_name, tool_input):
 
 
 def test_routing_never_picks_top_efforts():
-    tables = [model_route.CLAUDE, model_route.GPT, model_route.DEEPSEEK, model_route.CODEX_IMPLEMENT]
+    tables = [model_route.CLAUDE, model_route.GPT, model_route.DEEPSEEK, model_route.IMPLEMENT_RESTRICTED]
     assert not any(model_route.confirmation_reason(t) for table in tables for t in table)
 
 
@@ -231,4 +234,37 @@ def test_clearly_mechanical_goes_to_pi_borderline_to_implement():
     role, reason = model_route.pick_role({"mechanical": threshold - 0.01, "implement": 1.01 - threshold})
     assert role == "implement" and reason
     assert model_route.targets("mechanical", 0, restricted=False)[0] == model_route.PI
-    assert model_route.targets("mechanical", 0, restricted=True)[0]["providerInstanceId"] == "codex"
+    assert model_route.targets("mechanical", 0, restricted=True)[0] == model_route.CLAUDE[1]
+
+
+def test_escalation_target_is_allowed_and_announced(fake_jev, t3):
+    fake_jev.answers = _answers(IMPLEMENT)
+    text = _prompt("add a CSV export")["hookSpecificOutput"]["additionalContext"]
+    assert "retry once one tier up" in text
+    assert _delegate(model_route.DEEPSEEK[2]) is None  # flash high, the escalation of flash low
+    assert _delegate(model_route.GPT[3])["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+
+def _codex_delegate(target, session="s1"):
+    # Payload shape captured from codex 0.165 PreToolUse (MCP tool name is mcp__<server>__<tool>).
+    return autoroute.run_delegate({"session_id": session, "turn_id": "t1", "hook_event_name": "PreToolUse",
+                                   "model": "gpt-6.1-sol", "permission_mode": "bypassPermissions",
+                                   "tool_name": "mcp__t3-code__delegate_task", "tool_use_id": "exec-1",
+                                   "tool_input": {"task": "x", "target": target}}, "codex")
+
+
+def test_codex_delegate_allowed_and_denied(fake_jev, t3):
+    fake_jev.answers = _answers(IMPLEMENT)
+    autoroute.run_prompt({"prompt": "add a CSV export to the report helper", "session_id": "s1"}, "codex", 2.0)
+    assert _codex_delegate(model_route.DEEPSEEK[1]) is None
+    denied = _codex_delegate(model_route.CLAUDE[3])
+    out = denied["hookSpecificOutput"]
+    assert out["hookEventName"] == "PreToolUse" and out["permissionDecision"] == "deny"
+    assert "deepseek" in out["permissionDecisionReason"]
+
+
+def test_codex_ignores_other_mcp_tools(fake_jev, t3):
+    fake_jev.answers = _answers(IMPLEMENT)
+    autoroute.run_prompt({"prompt": "add a CSV export to the report helper", "session_id": "s1"}, "codex", 2.0)
+    other = {"session_id": "s1", "tool_name": "mcp__graft__graft_find_code", "tool_input": {}}
+    assert autoroute.run_delegate(other, "codex") is None

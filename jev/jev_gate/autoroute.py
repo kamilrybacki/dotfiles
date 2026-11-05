@@ -3,7 +3,8 @@
   prompt    UserPromptSubmit: classify the prompt (model_route.decide), store the decision
             for the session and inject the routed provider/model/effort as context.
   delegate  PreToolUse on mcp__t3-code__delegate_task: deny a delegation whose target is
-            not the routed target, its capacity fallback or its reviewer. Any delegation
+            not the routed target, its capacity fallback, its reviewer or its one-tier-up
+            escalation (for a retry after a failed test or rejected review). Any delegation
             to Astra or Fable (delegate_task or the native Agent tool) asks the operator
             to confirm, and so does any top effort (xhigh, max), even with routing off.
   edit      PostToolUse on Edit/Write/MultiEdit/NotebookEdit: count inline edits.
@@ -13,7 +14,7 @@
 
 Only top-level T3 threads are routed: T3CODE_THREAD_ID set and not a delegated child
 (`thread:delegated-task:...`), so a delegated worker is never re-routed. Restricted work
-is never delegated to opencode, Pi, Haiku or Luna, even with an override phrase.
+is never delegated to opencode, Pi or Luna, even with an override phrase.
 Both hooks fail open: any error or a missing decision means no opinion.
 """
 
@@ -34,6 +35,7 @@ MAX_PROMPT_CHARS = 1500
 OVERRIDE = re.compile(r"bez\s+routingu|bez\s+delegowania|auto-?route\s+off|no\s+auto-?route", re.IGNORECASE)
 DELEGATED_PREFIX = "thread:delegated-task:"
 DELEGATE_TOOL = "mcp__t3-code__delegate_task"
+ROUTE_KEYS = ("role", "effort", "tier", "sensitivity", "target", "fallback", "review", "escalate")
 
 
 def _config() -> dict:
@@ -87,7 +89,9 @@ def _fmt(target: dict | None) -> str:
 
 def instruction(decision: dict) -> str:
     role, effort, sensitivity = decision["role"], decision["effort"], decision["sensitivity"]
-    head = f"[auto-route] Jev routed this prompt: role={role}, effort={effort}, sensitivity={sensitivity}."
+    tier = decision.get("tier") or 0
+    head = (f"[auto-route] Jev routed this prompt: role={role}, effort={effort}"
+            f"{f', tier=T{tier}' if tier else ''}, sensitivity={sensitivity}.")
     if role == "answer":
         carried = decision.get("carried")
         if carried:
@@ -98,14 +102,24 @@ def instruction(decision: dict) -> str:
     if role == "design":
         lines.append(f"Design/planning work: do it in this thread, or delegate it with delegate_task "
                      f"target={_fmt(decision['target'])} (capacity fallback {_fmt(decision['fallback'])}).")
+        if tier and tier < 3:
+            lines.append(f"T{tier} is enough here: if this thread runs on Opus, delegate the work to that "
+                         "target instead of doing it inline, and keep the brief short.")
     else:
         lines.append(f"Delegate the work with mcp__t3-code__delegate_task, target={_fmt(decision['target'])} "
                      f"(only if that provider is unavailable or out of quota: {_fmt(decision['fallback'])}).")
         if decision.get("review"):
             lines.append(f"Then an adversarial review of the result with target={_fmt(decision['review'])}.")
+        if decision.get("escalate"):
+            lines.append(f"If the result fails its tests or the review rejects it, retry once one tier up: "
+                         f"target={_fmt(decision['escalate'])}. Escalate no further without the user.")
         lines.append("A PreToolUse hook denies delegate_task to any other model for this prompt.")
+    pressure = {k: v for k, v in (decision.get("budget") or {}).items() if v}
+    if pressure:
+        lines.append("Subscription budget pressure (0-3, already applied to the route): "
+                     + ", ".join(f"{k}={v}" for k, v in sorted(pressure.items())) + ".")
     if sensitivity == "restricted":
-        lines.append("Restricted: never delegate to opencode, Pi, Haiku or Luna.")
+        lines.append("Restricted: never delegate to opencode, Pi or Luna.")
     lines.append("The user can turn this off for one prompt with 'bez routingu'.")
     return "\n".join(lines)
 
@@ -135,15 +149,15 @@ def run_prompt(payload: dict, harness: str, timeout: float) -> dict | None:
             and previous.get("role") in model_route.DELEGATED_ROLES):
         # A question or "ok" between steps: reply directly, but a delegation of the earlier
         # task still has to follow that task's route.
-        stored = {k: previous.get(k) for k in ("role", "effort", "sensitivity", "target", "fallback", "review")}
+        stored = {k: previous.get(k) for k in ROUTE_KEYS}
         decision = {**decision, "carried": stored}
         task = previous.get("task", "")
-    save_state(session_id, {**{k: stored.get(k) for k in ("role", "effort", "sensitivity", "target",
-                                                          "fallback", "review")},
+    save_state(session_id, {**{k: stored.get(k) for k in ROUTE_KEYS},
                             "task": task, "prompt_role": decision["role"], "delegated": False,
                             "inline_edits": 0, "stop_nudged": False, "ts": time.time()})
     decision_log.record("autoroute", harness=harness, role=decision["role"], effort=decision["effort"],
                         sensitivity=decision["sensitivity"], carried=bool(decision.get("carried")),
+                        tier=decision.get("tier"), budget=decision.get("budget") or {},
                         latency_ms=round((time.monotonic() - started) * 1000))
     return {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": instruction(decision)}}
 
@@ -166,15 +180,15 @@ def check_delegate(tool_input: dict, state: dict | None) -> str | None:
     requested = tool_input.get("target") if isinstance(tool_input.get("target"), dict) else {}
     if state.get("sensitivity") == "restricted" and model_route.violates_restricted(requested):
         return ("auto-route: this work is restricted (secrets, infra config or network topology); "
-                "it must not go to opencode, Pi, Haiku or Luna. Use a first-party Claude or GPT model.")
+                "it must not go to opencode, Pi or Luna. Use a first-party Claude or GPT model.")
     if state.get("override") or state.get("role") not in model_route.DELEGATED_ROLES:
         return None
-    allowed = [state.get(k) for k in ("target", "fallback", "review") if state.get(k)]
+    allowed = [state.get(k) for k in ("target", "fallback", "review", "escalate") if state.get(k)]
     if any(_same(requested, a) for a in allowed):
         return None
     return (f"auto-route: Jev routed this prompt as role={state.get('role')}, effort={state.get('effort')}. "
             f"Delegate with target={_fmt(state.get('target'))} (capacity fallback {_fmt(state.get('fallback'))}"
-            f", reviewer {_fmt(state.get('review'))}). Requested: {_fmt(requested) if requested else 'no target'}. "
+            f", reviewer {_fmt(state.get('review'))}, escalation {_fmt(state.get('escalate'))}). Requested: {_fmt(requested) if requested else 'no target'}. "
             "Retry with the routed target; only the user can lift this (by saying 'bez routingu').")
 
 

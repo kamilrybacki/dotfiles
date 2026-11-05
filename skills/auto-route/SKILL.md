@@ -4,9 +4,9 @@ description: >
   Auto mode for T3 Code (like Nexos.ai "auto"): from this point in the session, every task the
   user gives is classified by Jev with two questions — the role (design → Claude, implement →
   DeepSeek via opencode, review → GPT via codex, mechanical → free Pi) and the criticality of
-  the feature (→ effort low/medium/high/max) — and delegated with `delegate_task` to the matching
-  provider, model and effort. Implementation always gets an adversarial GPT review except at low
-  effort. Use when the user invokes /auto-route, or says "auto mode", "routuj zadania",
+  the feature (→ model tier T1–T3, lowered under subscription budget pressure) — and delegated with `delegate_task` to the matching
+  provider, model and effort. Implementation gets a cross-vendor review except for trivial
+  work. Use when the user invokes /auto-route, or says "auto mode", "routuj zadania",
   "rozdzielaj zadania automatycznie".
 ---
 
@@ -38,13 +38,13 @@ fix small findings.
    Pass `--file` for the paths you know: without them the sensitivity check is often unsure and
    then falls back to `restricted`. (Paths only, never contents.)
 
-   It prints `{role, effort, sensitivity, target, fallback, review, reasons, probabilities}`.
+   It prints `{role, effort, tier, sensitivity, target, fallback, review, escalate, budget, reasons, probabilities}`.
    `route.py` is a thin wrapper over `jev-gate model-route`, the same code the hooks use.
    Role `answer` means: reply directly, no target.
 
    **In T3 top-level threads the hooks already did this step:** the prompt arrives with an
    `Auto-route` context block that holds the route, so use it and skip the call. A
-   `delegate_task` to a model outside that route's target, fallback or reviewer is denied
+   `delegate_task` to a model outside that route's target, fallback, reviewer or escalation is denied
    by a PreToolUse hook. If you edit files for an implement/review/mechanical prompt without
    any `delegate_task`, a Stop hook stops you once: delegate, or tell the user why inline was
    right. The user overrides all of this for one prompt with "bez routingu".
@@ -74,35 +74,50 @@ fix small findings.
 
 ## Routing tables
 
-Role → family (question 1). Criticality → effort (question 2):
-trivial → low, limited → medium, material → high, critical → max.
+Every route is a **tier**, not a fixed model. Criticality → tier per role:
 
-| effort | design (Claude) | implement (opencode DeepSeek) | review / adversarial (codex GPT) |
+| tier | Claude ladder | GPT ladder | DeepSeek ladder (implement) |
 |---|---|---|---|
-| low | Haiku 5.5 · medium | deepseek-v4.1-flash · low (no review) | gpt-6-luna · medium |
-| medium | Sonnet 5.5 · medium | deepseek-v4.1-flash · high | gpt-6.1-terra · medium |
-| high | Sonnet 5.5 · high | deepseek-v4.1-flash · high | gpt-6.1-sol · high |
-| max | Opus 5.5 · high | deepseek-v4.1-flash · high | gpt-6.1-sol · high |
+| T1 cheap | Haiku 5.5 · medium | gpt-6-luna · medium | deepseek-v4.1-flash · low |
+| T2 default | Sonnet 5.5 · medium | gpt-6.1-terra · medium | deepseek-v4.1-flash · high |
+| T3 strong | Opus 5.5 · high | gpt-6.1-sol · high | gpt-6.1-sol · high |
+| T4 top | Astra, Fable, any `xhigh`/`max` | — | — |
 
-The implement reviewer is the GPT model in the same row. Mechanical → Pi `default` (free),
-fallback Haiku. Capacity fallbacks: design ↔ GPT of the same row, review ↔ Claude of the same
-row, implement → Claude of the same row.
-
-**Astra, Fable and the top efforts (`xhigh`, `max`) are never routed.** Any delegation to them (delegate_task or the Agent tool) asks the operator to confirm, even with "bez routingu" or routing off. The "max" route level therefore uses effort `high`.
-
-**Restricted** sensitivity (no opencode, Pi, Haiku or Luna; low is raised to medium):
-
-| effort | design | implement → reviewer | review | mechanical |
+| criticality | design (Claude) | implement (DeepSeek) | review (GPT) | implement reviewer |
 |---|---|---|---|---|
-| low / medium | Sonnet · medium | gpt-6.1-terra · medium → Sonnet · medium (none at low) | terra · medium | terra · medium |
-| high | Sonnet · high | gpt-6.1-sol · high → Sonnet · high | sol · high | sol · high |
-| max | Opus · high | gpt-6.1-sol · high → Opus · high | sol · high | sol · high |
+| trivial | T2 | T1 | T1 | none |
+| limited | T2 | T1 | T1 | T1 |
+| material | T3 | T2 | T2 | T2 |
+| critical | T3 | T2 | T3 | T3 |
+
+The implement reviewer is from another vendor than the implementer (DeepSeek → GPT, Codex →
+Claude). Mechanical → Pi `default` (free), fallback Haiku. Capacity fallback = the other
+vendor's ladder at the same tier. **Escalate** = the same ladder one tier up (in the route).
+
+**T4 is never routed.** Any delegation to Astra, Fable or the top efforts (`xhigh`, `max`),
+via delegate_task or the Agent tool, asks the operator to confirm, even with "bez routingu" or
+routing off.
+
+**The thread itself:** most prompts are design. Run the T3 Code thread on Sonnet by default; Opus
+only when the route says T3. At T1/T2 an Opus thread should delegate instead of working inline.
+
+**Budget pressure** (`jev_gate/budget.py`) reads the quota-axi cache
+(`~/.cache/quota-axi/quotas.json`). Per provider it projects the worst window's usage at reset
+(used / elapsed fraction): < 80 % → 0, < 100 % → 1, < 130 % → 2, else (or used ≥ 90 %) → 3.
+Non-critical work drops one tier per level (at most two; design never below T2). Critical
+work is never lowered. Level 3 swaps to the other vendor's ladder when that one is not burning.
+No or stale cache → no pressure. Snapshots go to `~/.local/state/jev/usage.jsonl` (every
+10 min) for trends.
+
+**Restricted** sensitivity: first-party only, no opencode, Pi or Luna. Haiku is allowed.
+Implement ladder: T1 Haiku, T2 Terra, T3 Sol (reviewer Claude); GPT ladder T1 is Terra;
+mechanical → Haiku (fallback Terra).
 
 Decision rule (in `route.py`):
 - Role = the most likely option. P(other) ≥ 0.5 or no answer → design (you decide).
   Mechanical needs P ≥ 0.7, otherwise implement.
-- Effort = the lowest criticality level whose cumulative probability (ignoring `other`) reaches
-  0.7. `max` also needs P(critical) ≥ 0.5, otherwise high. P(other) ≥ 0.5 or no answer → medium.
+- Criticality = the lowest level whose cumulative probability (ignoring `other`) reaches
+  0.5 (the median). `critical` also needs P(critical) ≥ 0.5, otherwise material. P(other) ≥ 0.5 or no answer → limited.
 - Sensitivity from `jev-gate route`; unreachable or unsure → restricted.
 
 ## Runtime rules
@@ -113,10 +128,10 @@ Decision rule (in `route.py`):
   cannot fix missing access.
 - **Failed checks or unsupported conclusions** → one correction round with the concrete
   evidence, only if the feedback names a concrete fix.
-- **Repeated substantive failure** → escalate to the next effort row of the same role (no need
-  to rerun `route.py`) with a compact handoff: findings, attempted fixes, failing checks. At
-  most two escalations; after `max`, implementation moves to Claude of the max row. Then report
-  the unresolved issue.
+- **Failing tests or a rejecting review after the correction round** → escalate automatically,
+  **once**, to the route's `escalate` target (one tier up, the hook allows it) with a compact
+  handoff: findings, attempted fixes, failing checks. No further escalation without the user;
+  report the unresolved issue.
 - **Weak presentation only** → ask for the missing evidence/format; do not escalate.
 - **Follow-ups** to the same objective stay on the successful target. Reclassify (with
   `--history`) when scope, sensitivity or failure evidence changes.
@@ -124,7 +139,7 @@ Decision rule (in `route.py`):
 ## Hard rules
 
 - **Sensitivity.** `restricted` work (secrets, `.env`, infra config, network topology) never
-  goes to `pi`, `opencode`, Haiku or Luna — not as target, fallback, reviewer or escalation.
+  goes to `pi`, `opencode` or Luna — not as target, fallback, reviewer or escalation.
   If the user overrides to such a model for restricted work, refuse that part and say why.
 - **User override wins** otherwise ("zrób to Codexem", "użyj Opusa", "bez delegowania") for
   that task; auto mode continues with the next one.

@@ -1,10 +1,16 @@
-"""Model routing for T3 Code delegation: two Jev questions -> provider, model, effort.
+"""Model routing for T3 Code delegation: two Jev questions -> provider, model, tier.
 
 Question 1 - role (the model family): design -> Claude, implement -> opencode DeepSeek,
 review -> codex GPT, mechanical -> Pi, answer -> no delegation (reply in the conversation).
-Question 2 - criticality (the effort level): trivial/limited/material/critical ->
-low/medium/high/max. Implementation gets an adversarial GPT review except at low effort.
-Restricted work (route.classify) never goes to opencode, Pi, Haiku or Luna.
+Question 2 - criticality (trivial/limited/material/critical). Criticality sets how strong
+the review is; the implementer's tier follows the role (see TIER). Tiers:
+  T1 cheap (Pi, DeepSeek flash, Haiku, Luna)   T2 default (Sonnet, Terra, flash high)
+  T3 strong (Opus, Sol high)                    T4 Astra/Fable/xhigh/max: operator confirms
+Implementation is reviewed by the other vendor except when trivial. Every route carries an
+`escalate` target one tier up, used once after a failed test or a rejected review.
+Budget (budget.py): pressure on the target's subscription lowers non-critical work by up to
+two tiers and, when a provider is burning, moves the work to the other vendor.
+Restricted work (route.classify) never goes to opencode, Pi or Luna.
 Fails safe: Jev unreachable -> design role, medium effort, restricted.
 """
 
@@ -13,11 +19,11 @@ from __future__ import annotations
 import re
 from concurrent.futures import ThreadPoolExecutor
 
-from . import client, route
+from . import budget, client, route
 from .redact import redact
 
 FIELD_CHARS = 1500
-QUANTILE = 0.7          # effort = lowest level whose cumulative probability reaches this
+QUANTILE = 0.5          # effort = lowest level whose cumulative probability reaches this
 P_MAX = 0.5             # `max` effort also needs P(critical) >= this, otherwise `high`
 P_OTHER_UNSURE = 0.5    # P(other) at or above this means Jev could not classify
 P_MECHANICAL_PI = 0.7   # Pi only when the task is clearly mechanical
@@ -86,22 +92,25 @@ def _opencode(model: str, variant: str) -> dict:
 
 
 PI = {"providerInstanceId": "pi", "model": "default"}
-# Family -> target per effort level (low, medium, high, max).
-CLAUDE = [_claude("claude-haiku-5-5", "medium"), _claude("claude-sonnet-5-5", "medium"),
-          _claude("claude-sonnet-5-5", "high"), _claude("claude-opus-5-5", "high")]
-# Astra, Fable and the top efforts (xhigh, max) are never routed: the operator confirms them.
-GPT = [_codex("gpt-6-luna", "medium"), _codex("gpt-6.1-terra", "medium"),
-       _codex("gpt-6.1-sol", "high"), _codex("gpt-6.1-sol", "high")]
-DEEPSEEK = [_opencode("opencode-go/deepseek-v4.1-flash", "low"),
-            _opencode("opencode-go/deepseek-v4.1-flash", "high"),
-            _opencode("opencode-go/deepseek-v4.1-flash", "high"),
-            _opencode("opencode-go/deepseek-v4.1-flash", "high")]
-# Restricted work: first-party models only, no Haiku/Luna.
-CLAUDE_RESTRICTED = [CLAUDE[1]] + CLAUDE[1:]
-GPT_RESTRICTED = [GPT[1]] + GPT[1:]
-CODEX_IMPLEMENT = [GPT[1], GPT[1], GPT[2], GPT[3]]
+# Ladders indexed by tier (1-3); index 0 is unused. Astra, Fable and the top efforts
+# (xhigh, max) are T4 and never routed: the operator confirms them.
+CLAUDE = [None, _claude("claude-haiku-5-5", "medium"), _claude("claude-sonnet-5-5", "medium"),
+          _claude("claude-opus-5-5", "high")]
+GPT = [None, _codex("gpt-6-luna", "medium"), _codex("gpt-6.1-terra", "medium"),
+       _codex("gpt-6.1-sol", "high")]
+DEEPSEEK = [None, _opencode("opencode-go/deepseek-v4.1-flash", "low"),
+            _opencode("opencode-go/deepseek-v4.1-flash", "high"), GPT[3]]
+# Restricted work: first-party models only; Haiku is allowed, Luna is not.
+CLAUDE_RESTRICTED = CLAUDE
+GPT_RESTRICTED = [None, GPT[2], GPT[2], GPT[3]]
+IMPLEMENT_RESTRICTED = [None, CLAUDE[1], GPT[2], GPT[3]]
+# Tier per role and criticality (trivial, limited, material, critical).
+TIER = {"implement": (1, 1, 2, 2), "design": (2, 2, 3, 3), "review": (1, 1, 2, 3)}
+REVIEW_TIER = (None, 1, 2, 3)   # reviewer of an implementation; trivial work is not reviewed
+MAX_BUDGET_DROP = 2
+BUDGET_FLOOR = {"design": 2}   # design never drops below Sonnet/Terra
 RESTRICTED_FORBIDDEN_PROVIDERS = ("opencode", "pi")
-RESTRICTED_FORBIDDEN_MODELS = re.compile(r"haiku|luna", re.IGNORECASE)
+RESTRICTED_FORBIDDEN_MODELS = re.compile(r"luna", re.IGNORECASE)
 CONFIRM_MODELS = re.compile(r"astra|fable", re.IGNORECASE)
 CONFIRM_EFFORTS = ("xhigh", "max")
 EFFORT_KEYS = ("effort", "reasoningEffort", "variant")
@@ -173,7 +182,7 @@ def pick_effort(probs: dict[str, float]) -> tuple[int, str | None]:
     weights = [probs.get(level, 0.0) for level in LEVELS]
     total = sum(weights)
     if total <= 0 or probs.get("other", 0.0) >= P_OTHER_UNSURE:
-        return UNSURE_EFFORT, "criticality unclear -> medium"
+        return UNSURE_EFFORT, "criticality unclear -> limited"
     cumulative, level = 0.0, 0
     for level, weight in enumerate(weights):
         cumulative += weight / total
@@ -184,25 +193,104 @@ def pick_effort(probs: dict[str, float]) -> tuple[int, str | None]:
     return level, None
 
 
-def targets(role: str, level: int, restricted: bool) -> tuple[dict | None, dict | None, dict | None]:
-    """Return (target, capacity fallback, reviewer) for a role at an effort level."""
-    claude = CLAUDE_RESTRICTED if restricted else CLAUDE
-    gpt = GPT_RESTRICTED if restricted else GPT
+def _ladder(family: str, restricted: bool) -> list:
+    if family == "claude":
+        return CLAUDE_RESTRICTED if restricted else CLAUDE
+    if family == "gpt":
+        return GPT_RESTRICTED if restricted else GPT
+    return IMPLEMENT_RESTRICTED if restricted else DEEPSEEK
+
+
+VENDORS = {"claudeAgent": "claude", "codex": "gpt", "opencode": "deepseek", "pi": "pi"}
+
+
+def _other(target: dict | None) -> str:
+    """Family of another vendor: Codex work goes to Claude, everything else to GPT."""
+    return "claude" if VENDORS.get((target or {}).get("providerInstanceId")) == "gpt" else "gpt"
+
+
+def _budget_tier(tier: int, level: int, pressure: int, floor: int = 1) -> tuple[int, str | None]:
+    """Critical work is never lowered; everything else drops one tier per pressure level."""
+    lowered = max(min(floor, tier), tier - min(pressure, MAX_BUDGET_DROP))
+    if level == 3 or lowered == tier:
+        return tier, None
+    return lowered, f"budget pressure {pressure} -> T{tier} lowered to T{lowered}"
+
+
+def plan(role: str, level: int, restricted: bool, pressures: dict | None = None) -> dict:
+    """Targets for a role at a criticality level, after budget pressure.
+
+    Returns target, fallback (other vendor, same tier), review (other vendor than the
+    implementer), escalate (one tier up, same ladder), tier and budget reasons.
+    """
+    pressures = pressures or {}
+    empty = {"target": None, "fallback": None, "review": None, "escalate": None,
+             "tier": 0, "review_tier": 0, "reasons": []}
     if role == "answer":
-        return None, None, None
+        return empty
     if role == "mechanical":
         if restricted:
-            return gpt[level], claude[level], None
-        return PI, CLAUDE[0], None
-    if role == "design":
-        return claude[level], gpt[level], None
-    if role == "review":
-        return gpt[level], claude[level], None
-    # implement: DeepSeek writes, GPT reviews; restricted -> codex writes, Claude reviews.
-    reviewer = None if level == 0 else (claude[level] if restricted else gpt[level])
-    if restricted:
-        return CODEX_IMPLEMENT[level], claude[level], reviewer
-    return DEEPSEEK[level], claude[level], reviewer
+            return {**empty, "target": CLAUDE[1], "fallback": GPT_RESTRICTED[1],
+                    "escalate": CLAUDE[2], "tier": 1}
+        return {**empty, "target": PI, "fallback": CLAUDE[1], "escalate": CLAUDE[2], "tier": 1}
+    family = {"design": "claude", "review": "gpt"}.get(role, "implement")
+    ladder = _ladder(family, restricted)
+    tier, reasons = TIER[role][level], []
+    if budget.level_of(pressures, ladder[tier]) >= 3:
+        other = _ladder(_other(ladder[tier]) if family != "implement" else "claude", restricted)
+        if budget.level_of(pressures, other[tier]) < 3:
+            reasons.append(f"{ladder[tier]['providerInstanceId']} quota burning -> other vendor")
+            ladder = other
+    unlowered = tier
+    tier, reason = _budget_tier(tier, level, budget.level_of(pressures, ladder[tier]),
+                                BUDGET_FLOOR.get(role, 1))
+    reasons += [reason] if reason else []
+    target = ladder[tier]
+    if tier != unlowered and budget.level_of(pressures, target) >= 3:
+        # Mixed-vendor ladders (restricted implement): the lower rung may sit on a burning vendor.
+        alt = _ladder(_other(target), restricted)[tier]
+        if budget.level_of(pressures, alt) < 3:
+            target = alt
+            reasons.append(f"lowered rung on a burning vendor -> {alt['providerInstanceId']}")
+        else:
+            tier, target = unlowered, ladder[unlowered]
+            reasons.append("lowered rung on a burning vendor -> tier kept")
+    fallback = _ladder(_other(target), restricted)[tier]
+    escalate = ladder[tier + 1] if tier < 3 else None
+    review, review_tier = None, 0
+    if role == "implement" and REVIEW_TIER[level]:
+        reviewers = _ladder(_other(target), restricted)
+        base = REVIEW_TIER[level]
+        if level != 3 and budget.level_of(pressures, reviewers[base]) >= 3:
+            # Burning reviewer vendor: another vendor (never the implementer's) at full tier.
+            mine = VENDORS.get(target["providerInstanceId"])
+            for family in ("claude", "gpt"):
+                alt = _ladder(family, restricted)
+                if (VENDORS.get(alt[base]["providerInstanceId"]) != mine and alt is not reviewers
+                        and budget.level_of(pressures, alt[base]) < 3):
+                    reasons.append(f"review: {reviewers[base]['providerInstanceId']} quota burning "
+                                   f"-> {alt[base]['providerInstanceId']}")
+                    reviewers = alt
+                    break
+        review_tier, reason = _budget_tier(REVIEW_TIER[level], level,
+                                           budget.level_of(pressures, reviewers[REVIEW_TIER[level]]))
+        reasons += [f"review: {reason}"] if reason else []
+        review = reviewers[review_tier]
+    return {"target": target, "fallback": fallback, "review": review, "escalate": escalate,
+            "tier": tier, "review_tier": review_tier, "reasons": reasons}
+
+
+def targets(role: str, level: int, restricted: bool) -> tuple[dict | None, dict | None, dict | None]:
+    """(target, fallback, reviewer) without budget pressure."""
+    routed = plan(role, level, restricted)
+    return routed["target"], routed["fallback"], routed["review"]
+
+
+def _pressures() -> dict:
+    try:
+        return budget.pressure()
+    except Exception:  # noqa: BLE001 - budget awareness must never break routing
+        return {}
 
 
 def decide(task: str, files: list[str] | None = None, *, deliverable: str = "unknown",
@@ -211,28 +299,34 @@ def decide(task: str, files: list[str] | None = None, *, deliverable: str = "unk
     files = list(files or []) or paths_in(f"{task}\n{history}")
     state = {"task": task, "deliverable": deliverable[:FIELD_CHARS],
              "scope": scope[:FIELD_CHARS], "history": redact(history)[:FIELD_CHARS]}
-    with ThreadPoolExecutor(max_workers=2) as pool:
+    with ThreadPoolExecutor(max_workers=3) as pool:
         probs_future = pool.submit(ask_jev, state, timeout)
         # A short follow-up ("ok, do it") is judged together with the task it continues.
         sensitivity_task = task if history == "none" else f"{task}\n{state['history']}"
         tier_future = pool.submit(route.classify, sensitivity_task, files[:20], timeout)
+        pressure_future = pool.submit(_pressures)
         probs, tier = probs_future.result(), tier_future.result()
+        pressures = pressure_future.result()
     sensitivity = tier.get("tier", "restricted")
     restricted = sensitivity == "restricted"
     role, role_reason = pick_role(probs.get("role", {}))
     level, effort_reason = pick_effort(probs.get("criticality", {}))
     reasons = [r for r in (role_reason, effort_reason) if r]
     if restricted and role in ("implement", "mechanical"):
-        reasons.append("restricted -> no opencode/Pi; codex implements, Claude reviews")
-    target, fallback, review = targets(role, level, restricted)
+        reasons.append("restricted -> no opencode/Pi/Luna")
+    routed = plan(role, level, restricted, pressures)
     return {
         "role": role,
         "effort": EFFORTS[level],
+        "tier": routed["tier"],
+        "review_tier": routed["review_tier"],
         "sensitivity": sensitivity,
         "sensitivity_source": tier.get("source"),
-        "target": target,
-        "fallback": fallback,
-        "review": review,
-        "reasons": reasons,
+        "target": routed["target"],
+        "fallback": routed["fallback"],
+        "review": routed["review"],
+        "escalate": routed["escalate"],
+        "budget": {k: v.get("level", 0) for k, v in pressures.items()},
+        "reasons": reasons + routed["reasons"],
         "probabilities": {q: {k: round(v, 2) for k, v in p.items()} for q, p in probs.items()},
     }

@@ -34,7 +34,7 @@ def test_redact_keeps_ordinary_commands():
 
 
 @pytest.mark.parametrize("command", [
-    "cat ~/.ssh/id_ed25519",
+    "cat ~/.codex/.credentials.json",
     "cat /home/kamil/.vault-token",
     "cp .env /tmp/x",
     "source .env.local",

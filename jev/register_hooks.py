@@ -20,13 +20,17 @@ TARGETS = {
         "timeout": 5,  # seconds
         "route_timeout": 15,
         "delegate_tool": "mcp__t3-code__delegate_task",
+        "native_agent_tool": "Agent",
         "edit_tools": "Edit|Write|MultiEdit|NotebookEdit",
     },
     "codex": {
         "path": Path.home() / ".codex" / "hooks.json",
         "timeout": 5000,  # milliseconds, matching the existing graft hooks
         "route_timeout": 15000,
-        "delegate_tool": None,  # Codex has no PreToolUse hook for MCP tools: injection only
+        # Verified on codex 0.165: PreToolUse fires for MCP calls with tool_name
+        # "mcp__<server>__<tool>" and honours the same hookSpecificOutput deny format as Claude.
+        # Codex has no native Agent tool, no Edit tools and no Stop-time nudge wiring here.
+        "delegate_tool": "mcp__t3-code__delegate_task",
     },
 }
 
@@ -45,7 +49,8 @@ def _entries(harness: str, cfg: dict) -> dict[str, list[dict]]:
     entries = {"UserPromptSubmit": [{"hooks": [hook("context", cfg["timeout"]),
                                                hook("autoroute prompt", cfg["route_timeout"], route_flag)]}]}
     if cfg.get("delegate_tool"):
-        entries["PreToolUse"] = [{"matcher": f"{cfg['delegate_tool']}|Agent",
+        matcher = "|".join(t for t in (cfg["delegate_tool"], cfg.get("native_agent_tool")) if t)
+        entries["PreToolUse"] = [{"matcher": matcher,
                                   "hooks": [hook("autoroute delegate", cfg["timeout"])]}]
     if cfg.get("delegate_tool") and cfg.get("edit_tools"):
         # Stop enforcement needs both signals: inline edits and delegate_task calls.
