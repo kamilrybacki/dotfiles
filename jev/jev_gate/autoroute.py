@@ -118,6 +118,12 @@ def instruction(decision: dict) -> str:
     if pressure:
         lines.append("Subscription budget pressure (0-3, already applied to the route): "
                      + ", ".join(f"{k}={v}" for k, v in sorted(pressure.items())) + ".")
+    pace = decision.get("pace") or {}
+    if pace:
+        lines.append("T3 quota pace: " + ", ".join(
+            f"{provider}={info.get('pace') or 'unknown'} ({info.get('window')}, gap {info.get('gap')} pp)"
+            for provider, info in sorted(pace.items())
+        ) + ".")
     if sensitivity == "restricted":
         lines.append("Restricted: never delegate to opencode, Pi or Luna.")
     lines.append("The user can turn this off for one prompt with 'bez routingu'.")
@@ -158,6 +164,11 @@ def run_prompt(payload: dict, harness: str, timeout: float) -> dict | None:
     decision_log.record("autoroute", harness=harness, role=decision["role"], effort=decision["effort"],
                         sensitivity=decision["sensitivity"], carried=bool(decision.get("carried")),
                         tier=decision.get("tier"), budget=decision.get("budget") or {},
+                        criticality=decision.get("criticality"), pace=decision.get("pace") or {},
+                        used=decision.get("used") or {},
+                        probabilities=decision.get("probabilities") or {},
+                        target=(decision.get("target") or {}).get("model"),
+                        provider=(decision.get("target") or {}).get("providerInstanceId"),
                         latency_ms=round((time.monotonic() - started) * 1000))
     return {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": instruction(decision)}}
 

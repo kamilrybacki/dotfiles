@@ -71,6 +71,22 @@ capped at 6000 chars.
 - Each prompt makes two concurrent Jev calls (role/effort + sensitivity), about 0.5 s total. On any error the
   hooks print nothing.
 
+## T3 quota pace
+
+For T3 delegation, the router reads provider snapshots already written by T3 in
+`~/.t3/caches` (override with `JEV_T3_PROVIDER_CACHE`). No account details or
+tokens are sent to Jev. Each eligible window uses T3's pace calculation: used
+percent minus elapsed-window percent, with ±5 percentage points considered on
+pace. When the preferred provider is ahead, an eligible provider on or under
+pace is preferred at the same tier. Critical review, sensitivity restrictions
+and explicit model restrictions still apply.
+
+Snapshots older than 30 minutes, unavailable providers, expired windows and
+model-specific limits that do not apply to the routed model are ignored. If T3
+cannot provide usable data for a provider, the existing quota-axi cache remains
+the fallback; unknown headroom is not treated as evidence of being under pace.
+The route's injected context shows the source, window and pace gap.
+
 ## Tuning
 
 - `policy.json` `mode` (or env `JEV_EXEC_MODE`):
@@ -87,3 +103,6 @@ capped at 6000 chars.
   `jev-latest` can shift behaviour.
 - `JEV_CONTEXT_THRESHOLD` (default 0.6) sets the noul cut-off for fragments.
 - Review `decisions.jsonl` before tightening thresholds.
+
+
+The `autoroute` record in `decisions.jsonl` also carries `criticality`, the full per-question `probabilities`, `target`/`provider`, `pace` (T3 pace per provider) and `used` (window, used %, projection), so routing can be analysed historically.

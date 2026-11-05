@@ -9,6 +9,12 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
+@pytest.fixture(autouse=True)
+def isolated_t3_provider_cache(monkeypatch, tmp_path):
+    """Tests must never route based on the operator's live quota snapshot."""
+    monkeypatch.setenv("JEV_T3_PROVIDER_CACHE", str(tmp_path / "no-t3-cache"))
+
+
 class FakeJev:
     """In-process stand-in for api.typesafe.ai: records requests, replays canned answers."""
 

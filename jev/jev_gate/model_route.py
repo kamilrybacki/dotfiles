@@ -236,9 +236,31 @@ def plan(role: str, level: int, restricted: bool, pressures: dict | None = None)
     family = {"design": "claude", "review": "gpt"}.get(role, "implement")
     ladder = _ladder(family, restricted)
     tier, reasons = TIER[role][level], []
+    current = ladder[tier]
+    current_pressure = pressures.get(current["providerInstanceId"], {})
+    if current_pressure.get("pace") == "ahead":
+        # Prefer a known provider on/under pace at the same quality tier. Never
+        # treat missing quota data as headroom and never escape restricted ladders.
+        alternatives = []
+        for candidate_family in ("claude", "gpt"):
+            candidate_ladder = _ladder(candidate_family, restricted)
+            candidate = candidate_ladder[tier]
+            state = pressures.get(candidate["providerInstanceId"], {})
+            if (candidate["providerInstanceId"] != current["providerInstanceId"]
+                    and state.get("pace") in ("under", "on") and state.get("level", 0) < 3):
+                alternatives.append((0 if state["pace"] == "under" else 1, candidate_ladder))
+        if alternatives:
+            _, ladder = min(alternatives, key=lambda item: item[0])
+            reasons.append(
+                f"{current['providerInstanceId']} ahead of T3 pace -> "
+                f"{ladder[tier]['providerInstanceId']} at same tier"
+            )
     if budget.level_of(pressures, ladder[tier]) >= 3:
         other = _ladder(_other(ladder[tier]) if family != "implement" else "claude", restricted)
-        if budget.level_of(pressures, other[tier]) < 3:
+        other_state = pressures.get(other[tier]["providerInstanceId"], {})
+        other_known = other_state.get("pace") in ("under", "on")
+        if (budget.level_of(pressures, other[tier]) < 3
+                and (current_pressure.get("source") != "t3" or other_known)):
             reasons.append(f"{ladder[tier]['providerInstanceId']} quota burning -> other vendor")
             ladder = other
     unlowered = tier
@@ -261,13 +283,29 @@ def plan(role: str, level: int, restricted: bool, pressures: dict | None = None)
     if role == "implement" and REVIEW_TIER[level]:
         reviewers = _ladder(_other(target), restricted)
         base = REVIEW_TIER[level]
+        reviewer_state = pressures.get(reviewers[base]["providerInstanceId"], {})
+        if level != 3 and reviewer_state.get("pace") == "ahead":
+            mine = VENDORS.get(target["providerInstanceId"])
+            for review_family in ("claude", "gpt"):
+                alt = _ladder(review_family, restricted)
+                alt_state = pressures.get(alt[base]["providerInstanceId"], {})
+                if (VENDORS.get(alt[base]["providerInstanceId"]) != mine and alt is not reviewers
+                        and alt_state.get("pace") in ("under", "on")
+                        and alt_state.get("level", 0) < 3):
+                    reasons.append(f"review: {reviewers[base]['providerInstanceId']} ahead of T3 pace "
+                                   f"-> {alt[base]['providerInstanceId']} at same tier")
+                    reviewers = alt
+                    break
         if level != 3 and budget.level_of(pressures, reviewers[base]) >= 3:
             # Burning reviewer vendor: another vendor (never the implementer's) at full tier.
             mine = VENDORS.get(target["providerInstanceId"])
             for family in ("claude", "gpt"):
                 alt = _ladder(family, restricted)
+                alt_state = pressures.get(alt[base]["providerInstanceId"], {})
                 if (VENDORS.get(alt[base]["providerInstanceId"]) != mine and alt is not reviewers
-                        and budget.level_of(pressures, alt[base]) < 3):
+                        and budget.level_of(pressures, alt[base]) < 3
+                        and (reviewer_state.get("source") != "t3"
+                             or alt_state.get("pace") in ("under", "on"))):
                     reasons.append(f"review: {reviewers[base]['providerInstanceId']} quota burning "
                                    f"-> {alt[base]['providerInstanceId']}")
                     reviewers = alt
@@ -318,6 +356,7 @@ def decide(task: str, files: list[str] | None = None, *, deliverable: str = "unk
     return {
         "role": role,
         "effort": EFFORTS[level],
+        "criticality": ("trivial", "limited", "material", "critical")[level],
         "tier": routed["tier"],
         "review_tier": routed["review_tier"],
         "sensitivity": sensitivity,
@@ -327,6 +366,10 @@ def decide(task: str, files: list[str] | None = None, *, deliverable: str = "unk
         "review": routed["review"],
         "escalate": routed["escalate"],
         "budget": {k: v.get("level", 0) for k, v in pressures.items()},
+        "pace": {k: {field: v.get(field) for field in ("pace", "gap", "window", "source")}
+                 for k, v in pressures.items() if v.get("source") == "t3"},
+        "used": {k: {"window": v.get("window"), "used": v.get("used"), "projected": v.get("projected")}
+                 for k, v in pressures.items()},
         "reasons": reasons + routed["reasons"],
         "probabilities": {q: {k: round(v, 2) for k, v in p.items()} for q, p in probs.items()},
     }

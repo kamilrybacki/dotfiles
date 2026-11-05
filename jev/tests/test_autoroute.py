@@ -268,3 +268,45 @@ def test_codex_ignores_other_mcp_tools(fake_jev, t3):
     autoroute.run_prompt({"prompt": "add a CSV export to the report helper", "session_id": "s1"}, "codex", 2.0)
     other = {"session_id": "s1", "tool_name": "mcp__graft__graft_find_code", "tool_input": {}}
     assert autoroute.run_delegate(other, "codex") is None
+
+
+def test_t3_pace_reaches_routing_and_delegate_gate(fake_jev, t3, monkeypatch):
+    from datetime import datetime, timedelta, timezone
+
+    fake_jev.answers = _answers({
+        'role': {'probabilities': {'review': .9, 'design': .1}},
+        'criticality': {'probabilities': {'material': .9, 'limited': .1}},
+    })
+    now = datetime.now(timezone.utc)
+    cache = t3 / 't3-provider-cache'
+    cache.mkdir()
+    for name, used in [('codex', 75), ('claudeAgent', 15)]:
+        window_id = 'primary' if name == 'codex' else 'five_hour'
+        provider = {'instanceId': name, 'driver': name, 'enabled': True,
+                    'usageLimits': {'checkedAt': now.isoformat(), 'windows': [{
+                        'id': window_id, 'kind': 'session', 'usedPercent': used,
+                        'windowDurationMins': 300,
+                        'resetsAt': (now + timedelta(minutes=150)).isoformat(),
+                    }]}}
+        (cache / f'{name}.json').write_text(json.dumps(provider))
+    monkeypatch.setenv('JEV_T3_PROVIDER_CACHE', str(cache))
+    result = _prompt('Review this implementation')
+    context = result['hookSpecificOutput']['additionalContext']
+    assert 'codex=ahead' in context and 'claudeAgent=under' in context
+    assert 'claude-sonnet' in context
+    assert _delegate(model_route.CLAUDE[2]) is None
+    assert _delegate(model_route.GPT[2]) is None  # same-tier capacity fallback
+    assert _delegate(model_route.DEEPSEEK[1])['hookSpecificOutput']['permissionDecision'] == 'deny'
+
+
+
+def test_decision_log_records_complexity_and_target(fake_jev, t3):
+    fake_jev.answers = _answers(IMPLEMENT)
+    _prompt("add a CSV export to the report helper")
+    from jev_gate import decision_log
+    rows = [json.loads(line) for line in decision_log.LOG_PATH.read_text().splitlines()]
+    row = next(r for r in rows if r["event"] == "autoroute")
+    assert row["criticality"] == "limited"
+    assert row["provider"] and row["target"]
+    assert "criticality" in row["probabilities"]
+    assert "pace" in row and "used" in row
