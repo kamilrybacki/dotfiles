@@ -22,8 +22,12 @@ Treat context, tools, permissions and routing as per-turn decisions.
   classifies each prompt (role → model family, criticality → effort, sensitivity) and
   injects the route as context. In Claude Code a PreToolUse hook on
   `mcp__t3-code__delegate_task` denies delegation to a model other than the route's
-  target, fallback or reviewer. Restricted work is never allowed to go to opencode, Pi,
-  Haiku or Luna. A Stop hook (Claude Code) blocks the end of a turn once when a delegated
+  target, fallback, reviewer or one-tier-up escalation. Tiers: T1 Haiku/Luna/flash,
+  T2 Sonnet/Terra, T3 Opus/Sol high; T4 (Astra, Fable, xhigh/max) always asks. The thread
+  itself should run on Sonnet; Opus only for design. Subscription budget pressure (from the
+  quota-axi cache) lowers non-critical tiers and swaps vendor when one is burning; critical
+  work is never lowered. A failed result may be retried once, one tier up. Restricted work
+  is never allowed to go to opencode, Pi or Luna (Haiku is allowed). A Stop hook (Claude Code) blocks the end of a turn once when a delegated
   role (implement/review/mechanical) edited files inline without any delegate_task: delegate,
   or say in one line why inline was right. To skip routing for one prompt, write "bez routingu" (or "bez delegowania",
   "auto-route off"). To turn it off everywhere, put `{"enabled": false}` in

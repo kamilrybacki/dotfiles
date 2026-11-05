@@ -44,7 +44,12 @@ def test_drops_a_previously_registered_exec_gate():
     assert all("exec" not in h["command"] for g in new["hooks"]["PreToolUse"] for h in g["hooks"])
 
 
-def test_codex_gets_the_prompt_hook_only():
+def test_codex_gets_prompt_and_delegate_hooks_only():
     new = updated_config({}, "codex", TARGETS["codex"], remove=False)
-    assert not {"PreToolUse", "PostToolUse", "Stop"} & set(new["hooks"])
+    assert not {"PostToolUse", "Stop"} & set(new["hooks"])
     assert new["hooks"]["UserPromptSubmit"][0]["hooks"][1]["timeout"] == 15000
+    group = new["hooks"]["PreToolUse"][0]
+    assert group["matcher"] == "mcp__t3-code__delegate_task"  # no native Agent tool in Codex
+    cmd = group["hooks"][0]
+    assert "--harness codex" in cmd["command"] and cmd["command"].endswith("autoroute delegate")
+    assert cmd["timeout"] == 5000

@@ -9,7 +9,7 @@ auto-route hooks use, so the skill and the hook enforcement never disagree:
   role        answer -> reply directly, design -> Claude, implement -> DeepSeek via opencode,
               review -> GPT via codex, mechanical -> Pi
   criticality -> effort low / medium / high / max
-Restricted work never goes to opencode, Pi, Haiku or Luna. Prints one JSON object.
+Restricted work never goes to opencode, Pi or Luna (Haiku is allowed). Prints one JSON object.
 Fails safe: Jev unreachable -> design role, medium effort, restricted.
 """
 

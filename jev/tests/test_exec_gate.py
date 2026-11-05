@@ -28,7 +28,7 @@ def test_advisory_never_asks_and_audits_in_background(fake_jev, monkeypatch):
 
 
 def test_advisory_still_denies_on_hard_rules(fake_jev):
-    out = exec_gate.run(bash("cat ~/.ssh/id_rsa"), ADVISORY, "t", 1)
+    out = exec_gate.run(bash("cat ~/.vault-token"), ADVISORY, "t", 1)
     assert out["hookSpecificOutput"]["permissionDecision"] == "deny"
 
 
@@ -70,7 +70,7 @@ def test_non_shell_tool_is_ignored(fake_jev):
 
 
 def test_deny_rule_blocks_without_calling_jev(fake_jev):
-    out = exec_gate.run(bash("cat ~/.ssh/id_rsa"), POLICY, "t", 1)
+    out = exec_gate.run(bash("cat ~/.vault-token"), POLICY, "t", 1)
     assert out["hookSpecificOutput"]["permissionDecision"] == "deny"
     assert fake_jev.requests == []
 
@@ -139,7 +139,7 @@ def test_fails_open_on_http_error(fake_jev):
 
 
 def test_codex_array_command(fake_jev):
-    payload = {"tool_name": "shell", "tool_input": {"command": ["cat", "/root/.ssh/id_ed25519"]}}
+    payload = {"tool_name": "shell", "tool_input": {"command": ["cat", "/root/.vault-token"]}}
     assert exec_gate.run(payload, POLICY, "codex", 1)["hookSpecificOutput"]["permissionDecision"] == "deny"
 
 
