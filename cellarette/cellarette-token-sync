@@ -1,28 +1,44 @@
 #!/usr/bin/env bash
-# Copy the cellarette MCP edge token from Vault (secret/homelab/cellarette/mcp,
-# field `token`) into ~/.config/cellarette/token (0600). The value is never printed.
+# Copy the labelled cellarette profile tokens from Vault (field `token`) into
+# ~/.config/cellarette (0600). The values are never printed:
+#   secret/homelab/cellarette/dev          -> token           (workspace profile, default)
+#   secret/homelab/cellarette/orchestrator -> token-operator  (operator profile)
 # cellarette-headers (the Claude Code headersHelper) reads that file; for Codex,
 # export it from your shell rc:
 #   [ -r ~/.config/cellarette/token ] && export CELLARETTE_MCP_TOKEN="$(<~/.config/cellarette/token)"
 #
 # Usage: cellarette-token-sync           # from Vault (VAULT_ADDR, VAULT_TOKEN or ~/.vault-token)
-#        cellarette-token-sync --stdin   # paste/pipe the token instead (no Vault access)
+#        cellarette-token-sync --stdin [token|token-operator]   # paste/pipe one token instead
 set -euo pipefail
 
 addr="${VAULT_ADDR:-http://127.0.0.1:8200}"
 token_file="${VAULT_TOKEN_FILE:-$HOME/.vault-token}"
-out="${XDG_CONFIG_HOME:-$HOME/.config}/cellarette/token"
+dir="${XDG_CONFIG_HOME:-$HOME/.config}/cellarette"
 
-mkdir -p "$(dirname "$out")"
+mkdir -p "$dir"
 umask 077
+
+commit() {  # commit <out>: move <out>.tmp into place if non-empty
+  local out="$1"
+  [[ -s "$out.tmp" ]] || { rm -f "$out.tmp"; echo "empty token for $out, nothing written" >&2; exit 1; }
+  mv "$out.tmp" "$out"
+  echo "wrote $out ($(wc -c <"$out") bytes)"
+}
+
 if [[ "${1:-}" == "--stdin" ]]; then
-  [[ -t 0 ]] && echo "paste the token, then Ctrl-D:" >&2
+  out="$dir/${2:-token}"
+  [[ -t 0 ]] && echo "paste the token for $out, then Ctrl-D:" >&2
   tr -d '[:space:]' >"$out.tmp"
-else
-  vtoken="${VAULT_TOKEN:-$(<"$token_file")}"
-  curl -fsS -H "X-Vault-Token: $vtoken" "$addr/v1/secret/data/homelab/cellarette/mcp" \
-    | jq -er '.data.data.token' | tr -d '[:space:]' >"$out.tmp"
+  commit "$out"
+  exit 0
 fi
-[[ -s "$out.tmp" ]] || { rm -f "$out.tmp"; echo "empty token, nothing written" >&2; exit 1; }
-mv "$out.tmp" "$out"
-echo "wrote $out ($(wc -c <"$out") bytes)"
+
+vtoken="${VAULT_TOKEN:-$(<"$token_file")}"
+hdr="$(mktemp)"; trap 'rm -f "$hdr"' EXIT
+printf 'X-Vault-Token: %s\n' "$vtoken" >"$hdr"
+for pair in dev:token orchestrator:token-operator; do
+  leaf="${pair%%:*}"; out="$dir/${pair#*:}"
+  curl -fsS -m 10 -H @"$hdr" "$addr/v1/secret/data/homelab/cellarette/$leaf" \
+    | jq -er '.data.data.token' | tr -d '[:space:]' >"$out.tmp"
+  commit "$out"
+done
