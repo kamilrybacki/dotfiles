@@ -8,7 +8,9 @@ CLAUDE_CODE_MCP_SERVER_URL. It prints a JSON object of HTTP headers:
   Authorization header (400 invalid_profile_token / 401), so none is sent.
 - the cellarette edge host: `{"Authorization": "Bearer <token>"}`, the token
   taken from $CELLARETTE_MCP_TOKEN or ~/.config/cellarette/token (written by
-  cellarette-token-sync).
+  cellarette-token-sync). A per-profile file ~/.config/cellarette/token-<profile>
+  (profile from the URL's ?profile=) takes precedence, so each MCP server can
+  carry its own labelled profile token.
 - any other host: refuse, so a redirected CELLARETTE_MCP_URL can never
   receive the token.
 
@@ -16,20 +18,41 @@ The token value is never written to stderr.
 """
 import json
 import os
+import re
 import sys
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 EDGE_HOST = "cellarette-mcp.kamilandrzejrybacki.dpdns.org"
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 
-def token_file() -> Path:
+PROFILE_RE = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
+
+
+def token_dir() -> Path:
     base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
-    return Path(base) / "cellarette" / "token"
+    return Path(base) / "cellarette"
 
 
-def read_token() -> str:
+def token_file() -> Path:
+    return token_dir() / "token"
+
+
+def read_profile_token(profile: str) -> str:
+    """Per-profile token file (token-<profile>); wins over the default token."""
+    if not PROFILE_RE.match(profile):
+        return ""
+    try:
+        return (token_dir() / f"token-{profile}").read_text().strip()
+    except OSError:
+        return ""
+
+
+def read_token(profile: str = "") -> str:
+    token = read_profile_token(profile) if profile else ""
+    if token:
+        return token
     token = os.environ.get("CELLARETTE_MCP_TOKEN", "").strip()
     if token:
         return token
@@ -55,7 +78,8 @@ def main() -> int:
     if host != EDGE_HOST or parts.scheme != "https":
         return fail(f"refusing to send a token to {parts.scheme}://{host or '?'}")
 
-    token = read_token()
+    profile = (parse_qs(parts.query).get("profile") or [""])[0]
+    token = read_token(profile)
     if not token or any(c.isspace() for c in token):
         return fail(f"no usable token: set CELLARETTE_MCP_TOKEN or run cellarette-token-sync ({token_file()})")
     print(json.dumps({"Authorization": f"Bearer {token}"}))
