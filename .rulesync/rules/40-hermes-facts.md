@@ -79,8 +79,6 @@ body as input and follows the skill of the same name.
   disk-housekeeping 02:30, knowledge-refresh 06:15, alphasignal 07:00, feed-digest 00:00.
 - **Scheduled** (n8n `hermes-schedules`): edge-weekly Mon 09:00, cost-report Mon 08:30,
   security-scan Sun 04:00, backup-restore-test 1st 05:00, resource-council weekdays 07:30 (UTC).
-- **linkedin-decision**: linkedin-approver reports the operator's approve/reject of a pending
-  publish; retry `publish` or stand down exactly as stated.
 - **Fix authority (infra only, never product/app code):** live fixes only for state GitOps does
   not own (failed/stuck Jobs, evicted pods, disk cleanup, caches, restarting a crashed non-Hermes
   workload). Anything ArgoCD/helm/ansible owns is fixed in git: push `hermes/<routine>-<slug>` and
