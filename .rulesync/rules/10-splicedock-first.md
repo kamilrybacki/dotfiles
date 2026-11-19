@@ -1,14 +1,14 @@
 ---
 root: true
 targets: ["claudecode", "codexcli"]
-description: "Cellarette-first tool selection policy (shared: Claude Code + Codex)"
+description: "Splicedock-first tool selection policy (shared: Claude Code + Codex)"
 globs: ["**/*"]
 ---
-## Tool Selection Policy — Cellarette First
+## Tool Selection Policy — Splicedock First
 
-**Before reaching for `Bash`, `WebFetch`, or any built-in, check whether a Cellarette MCP tool exists for the task.** Cellarette is the homelab tool aggregator — it bundles every backend behind one MCP server. Available tool families:
+**Before reaching for `Bash`, `WebFetch`, or any built-in, check whether a Splicedock MCP tool exists for the task.** Splicedock is the homelab tool aggregator — it bundles every backend behind one MCP server. Available tool families:
 
-| Need | Cellarette tool |
+| Need | Splicedock tool |
 |------|----------------|
 | Read/write secrets | `vault__*` |
 | Query metrics, logs, dashboards | `grafana__*` |
@@ -23,7 +23,7 @@ globs: ["**/*"]
 | Run Codex CLI from inside Claude | `codex__help` then `codex__run` |
 
 **Rules:**
-1. **Search cellarette tools first.** If the task fits a category above, use the cellarette tool — do NOT shell out to `curl`, `kubectl`, `gh`, etc.
+1. **Search splicedock tools first.** If the task fits a category above, use the splicedock tool — do NOT shell out to `curl`, `kubectl`, `gh`, etc.
 2. **CLI passthroughs (`gh`, `codex`):** call `<name>__help` once to learn the subcommand schema, then `<name>__run` with typed argv. Do not use raw `Bash gh ...`.
 3. **Bash is a last resort** for tasks that genuinely don't fit any MCP category (file system manipulation, build/test runners, local dev servers).
-4. **If a tool seems missing**, ask the user before improvising with `Bash` — cellarette tools are added frequently and a new backend may exist.
+4. **If a tool seems missing**, ask the user before improvising with `Bash` — splicedock tools are added frequently and a new backend may exist.

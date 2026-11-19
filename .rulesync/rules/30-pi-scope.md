@@ -11,7 +11,7 @@ Pi runs on the free models of the homelab LiteLLM (`pi --model jev/free`; the `j
 extension picks the model per message). It is the harness for **mechanical** work:
 renames, formatting, boilerplate, simple scripted edits, quick lookups.
 
-- **No MCP.** Pi has no cellarette, OpenViking or Graft tools. Use the shell (`rg`, `git`,
+- **No MCP.** Pi has no splicedock, OpenViking or Graft tools. Use the shell (`rg`, `git`,
   `gh`) and read only the lines you need.
 - **Never restricted data.** Free endpoints log and may train on what they receive. Do not
   open, print or paste secrets, `.env` files, tokens, Vault paths, infra config or network

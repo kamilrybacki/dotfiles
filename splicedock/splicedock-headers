@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Claude Code MCP `headersHelper` for the cellarette servers.
+"""Claude Code MCP `headersHelper` for the splicedock servers.
 
 Claude Code runs this before connecting and passes the server URL in
 CLAUDE_CODE_MCP_SERVER_URL. It prints a JSON object of HTTP headers:
 
 - localhost (the lw-main :8788 aggregator): `{}`. That proxy rejects ANY
   Authorization header (400 invalid_profile_token / 401), so none is sent.
-- the cellarette edge host: `{"Authorization": "Bearer <token>"}`, the token
-  taken from $CELLARETTE_MCP_TOKEN or ~/.config/cellarette/token (written by
-  cellarette-token-sync). A per-profile file ~/.config/cellarette/token-<profile>
+- the splicedock edge host: `{"Authorization": "Bearer <token>"}`, the token
+  taken from $SPLICEDOCK_MCP_TOKEN or ~/.config/splicedock/token (written by
+  splicedock-token-sync). A per-profile file ~/.config/splicedock/token-<profile>
   (profile from the URL's ?profile=) takes precedence, so each MCP server can
   carry its own labelled profile token.
-- any other host: refuse, so a redirected CELLARETTE_MCP_URL can never
+- any other host: refuse, so a redirected SPLICEDOCK_MCP_URL can never
   receive the token.
 
 The token value is never written to stderr.
@@ -32,7 +32,7 @@ PROFILE_RE = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 
 def token_dir() -> Path:
     base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
-    return Path(base) / "cellarette"
+    return Path(base) / "splicedock"
 
 
 def token_file() -> Path:
@@ -53,7 +53,7 @@ def read_token(profile: str = "") -> str:
     token = read_profile_token(profile) if profile else ""
     if token:
         return token
-    token = os.environ.get("CELLARETTE_MCP_TOKEN", "").strip()
+    token = os.environ.get("SPLICEDOCK_MCP_TOKEN", "").strip()
     if token:
         return token
     try:
@@ -63,7 +63,7 @@ def read_token(profile: str = "") -> str:
 
 
 def fail(message: str) -> int:
-    print(f"cellarette-headers: {message}", file=sys.stderr)
+    print(f"splicedock-headers: {message}", file=sys.stderr)
     return 1
 
 
@@ -81,7 +81,7 @@ def main() -> int:
     profile = (parse_qs(parts.query).get("profile") or [""])[0]
     token = read_token(profile)
     if not token or any(c.isspace() for c in token):
-        return fail(f"no usable token: set CELLARETTE_MCP_TOKEN or run cellarette-token-sync ({token_file()})")
+        return fail(f"no usable token: set SPLICEDOCK_MCP_TOKEN or run splicedock-token-sync ({token_file()})")
     print(json.dumps({"Authorization": f"Bearer {token}"}))
     return 0
 

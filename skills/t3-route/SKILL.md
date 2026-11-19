@@ -32,7 +32,7 @@ Script: `~/.claude/skills/t3-route/t3-route.py` (from this repo: `skills/t3-rout
 
 - the task text matches the `/route` overrides (infra, secret, vault, helm, token, ssh, prod, ...);
 - `sensitivity.classify` marks the task text restricted (keys, tokens, private IPs, infra paths);
-- the repo is helm, ansible, argocd-apps, n8n-workflows, cellarette or dotfiles;
+- the repo is helm, ansible, argocd-apps, n8n-workflows, splicedock (checkout dir may still be `cellarette`) or dotfiles;
 - the repo tracks secrets or network files (by `sensitivity.path_labels`).
 
 A refused route stays refused: offer `claude` or `codex`. `other` is never dispatched.

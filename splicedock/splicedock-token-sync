@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Copy the labelled cellarette profile tokens from Vault (field `token`) into
-# ~/.config/cellarette (0600). The values are never printed:
-#   secret/homelab/cellarette/dev          -> token           (workspace profile, default)
-#   secret/homelab/cellarette/orchestrator -> token-operator  (operator profile)
-# cellarette-headers (the Claude Code headersHelper) reads that file; for Codex,
+# Copy the labelled splicedock profile tokens from Vault (field `token`) into
+# ~/.config/splicedock (0600). The values are never printed:
+#   secret/homelab/splicedock/dev          -> token           (workspace profile, default)
+#   secret/homelab/splicedock/orchestrator -> token-operator  (operator profile)
+# splicedock-headers (the Claude Code headersHelper) reads that file; for Codex,
 # export it from your shell rc:
-#   [ -r ~/.config/cellarette/token ] && export CELLARETTE_MCP_TOKEN="$(<~/.config/cellarette/token)"
+#   [ -r ~/.config/splicedock/token ] && export SPLICEDOCK_MCP_TOKEN="$(<~/.config/splicedock/token)"
 #
-# Usage: cellarette-token-sync           # from Vault (VAULT_ADDR, VAULT_TOKEN or ~/.vault-token)
-#        cellarette-token-sync --stdin [token|token-operator]   # paste/pipe one token instead
+# Usage: splicedock-token-sync           # from Vault (VAULT_ADDR, VAULT_TOKEN or ~/.vault-token)
+#        splicedock-token-sync --stdin [token|token-operator]   # paste/pipe one token instead
 set -euo pipefail
 
 addr="${VAULT_ADDR:-http://127.0.0.1:8200}"
 token_file="${VAULT_TOKEN_FILE:-$HOME/.vault-token}"
-dir="${XDG_CONFIG_HOME:-$HOME/.config}/cellarette"
+dir="${XDG_CONFIG_HOME:-$HOME/.config}/splicedock"
 
 mkdir -p "$dir"
 umask 077
@@ -38,7 +38,7 @@ hdr="$(mktemp)"; trap 'rm -f "$hdr"' EXIT
 printf 'X-Vault-Token: %s\n' "$vtoken" >"$hdr"
 for pair in dev:token orchestrator:token-operator; do
   leaf="${pair%%:*}"; out="$dir/${pair#*:}"
-  curl -fsS -m 10 -H @"$hdr" "$addr/v1/secret/data/homelab/cellarette/$leaf" \
+  curl -fsS -m 10 -H @"$hdr" "$addr/v1/secret/data/homelab/splicedock/$leaf" \
     | jq -er '.data.data.token' | tr -d '[:space:]' >"$out.tmp"
   commit "$out"
 done

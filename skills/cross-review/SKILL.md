@@ -36,7 +36,7 @@ implement, consolidate and fix. Reviewers never edit files. Never merge.
    1. Write a summary of at most 3 plain sentences, with no code, no paths and no secrets.
    2. Run `python3 "$SKILL/jev-advice.py" rank-state --repo "$PWD" --base "$BASE" --rank <N> --tier standard --summary "<summary>" --reason "<each rank reason>"`.
       It prints a JSON request. Use exactly that JSON.
-   3. Call `mcp__cellarette__jev__ask` with `state` and `questions` from that JSON.
+   3. Call `mcp__splicedock__jev__ask` with `state` and `questions` from that JSON.
       Save the whole response to `jev.json`.
    4. Run `python3 "$SKILL/jev-advice.py" rank-result --rank <N> --answer jev.json`.
       It prints `Jev raised rank X->Y (conf Z)` or `Jev advisory ignored (reason)`, and a last line `rank=<R>`.

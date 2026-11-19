@@ -6,9 +6,9 @@
 # agent-ds files and are never printed.
 #
 # What agent-ds gets: Claude Code pointed at the homelab LiteLLM (DeepSeek-only key,
-# $5/30d cap), the read-only cellarette profile token `deepseek-ro`, and
+# $5/30d cap), the read-only splicedock profile token `deepseek-ro`, and
 # bypassPermissions. What it does NOT get: sudo, your ~/.ssh, ~/.kube, or the full
-# cellarette token.
+# splicedock token.
 set -euo pipefail
 
 LW="${AGENT_DS_LW:-kamil-rybacki@192.168.0.111}"
@@ -52,10 +52,10 @@ sudo chmod 750 "$HOME"
 echo "${AGENT} exists, unprivileged; ${HOME} is 750"
 
 step "secrets"
-sudo -u "$AGENT" -H mkdir -p "$AH/.config/litellm" "$AH/.config/cellarette" "$AH/.claude" "$AH/work"
+sudo -u "$AGENT" -H mkdir -p "$AH/.config/litellm" "$AH/.config/splicedock" "$AH/.claude" "$AH/work"
 write_secret secret/homelab/litellm/laptop-agent-ds api_key "$AH/.config/litellm/key"
-write_secret secret/homelab/cellarette/deepseek token "$AH/.config/cellarette/deepseek-token"
-rm -f "$HOME/.config/cellarette/deepseek-token"
+write_secret secret/homelab/splicedock/deepseek token "$AH/.config/splicedock/deepseek-token"
+rm -f "$HOME/.config/splicedock/deepseek-token"
 
 step "shell environment"
 # The rc block only references the key file via $(<...); the secret itself is never written into ~/.bashrc.
@@ -101,14 +101,14 @@ jq ".permissions.defaultMode = \"bypassPermissions\"" "$f" > "$f.tmp" && mv "$f.
 cat "$f"
 '
 
-step "MCP: cellarette (deepseek-ro)"
+step "MCP: splicedock (deepseek-ro)"
 # shellcheck disable=SC2016
 as_agent '
 export PATH="$HOME/.local/bin:$PATH"
-claude mcp remove -s user cellarette >/dev/null 2>&1 || true
-claude mcp add -s user --transport http cellarette '"$MCP_URL"' \
-  --header "Authorization: Bearer $(<~/.config/cellarette/deepseek-token)" >/dev/null
-echo "cellarette MCP registered"
+claude mcp remove -s user splicedock >/dev/null 2>&1 || true
+claude mcp add -s user --transport http splicedock '"$MCP_URL"' \
+  --header "Authorization: Bearer $(<~/.config/splicedock/deepseek-token)" >/dev/null
+echo "splicedock MCP registered"
 '
 
 step "verify"
@@ -118,11 +118,11 @@ k=$(<~/.config/litellm/key)
 r=$(curl -s -m60 '"$LITELLM_URL"'/v1/messages -H "x-api-key: $k" -H "anthropic-version: 2023-06-01" -H "Content-Type: application/json" \
   -d "{\"model\":\"'"$MODEL"'\",\"max_tokens\":10,\"messages\":[{\"role\":\"user\",\"content\":\"reply with: ok\"}]}")
 echo "LiteLLM (DeepSeek): $(jq -r ".content[0].text // .error.message" <<<"$r")"
-t=$(<~/.config/cellarette/deepseek-token)
+t=$(<~/.config/splicedock/deepseek-token)
 n=$(curl -s -m20 -X POST '"$MCP_URL"' -H "Authorization: Bearer $t" -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}" \
   | sed -n "s/^data: //p" | jq ".result.tools | length")
-echo "cellarette deepseek-ro tools: $n (expected 35)"
+echo "splicedock deepseek-ro tools: $n (expected 35)"
 '
 
 step "done"
@@ -130,5 +130,5 @@ cat <<EOF
 Start it:
   sudo -iu ${AGENT}
   cd ~/work && claude
-First start asks once to confirm bypass-permissions mode. Then /mcp shows cellarette.
+First start asks once to confirm bypass-permissions mode. Then /mcp shows splicedock.
 EOF

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Restore all Claude Code plugin marketplaces + plugins on a fresh machine, so a
-# bare install needs only: this dotfiles sync + a reachable Cellarette.
+# bare install needs only: this dotfiles sync + a reachable Splicedock.
 # Source of truth: marketplaces.txt (name<TAB>repo) and plugins.txt (name@marketplace).
 # Third-party plugins stay upstream (not vendored) — this just re-adds + re-installs them.
 set -euo pipefail

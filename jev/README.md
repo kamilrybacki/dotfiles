@@ -11,7 +11,7 @@ at the harness's high-frequency decision points.
 | §VIII conditional instructions | `jev-gate context` UserPromptSubmit hook + `fragments/*.md` | Claude Code, Codex CLI |
 | §IX security-aware routing (Table IV) | `jev-gate route` → `open`/`standard`/`restricted` | any dispatcher |
 | model auto-route (skill `auto-route`) | `jev-gate model-route`; hooks `jev-gate autoroute prompt` (UserPromptSubmit, injects route) and `autoroute delegate` (PreToolUse on `mcp__t3-code__delegate_task`, denies an off-route model; also on `Agent`: Astra, Fable or effort xhigh/max always ask the operator to confirm) | T3 top-level threads: Claude Code (both), Codex (prompt only) |
-| generic typed decisions | `jev-gate ask`, cellarette `jev__ask` | Hermes, Paperclip agents, any MCP client |
+| generic typed decisions | `jev-gate ask`, splicedock `jev__ask` | Hermes, Paperclip agents, any MCP client |
 
 ## Safety properties
 

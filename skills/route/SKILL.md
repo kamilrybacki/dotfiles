@@ -29,7 +29,7 @@ Options:
    `python3 "$SKILL/route.py" question --summary "<summary>"`.
    It prints a JSON request with one `owner` choice question. Use exactly that JSON.
 
-3. **Ask Jev.** Call `mcp__cellarette__jev__ask` with its `state` and `questions`.
+3. **Ask Jev.** Call `mcp__splicedock__jev__ask` with its `state` and `questions`.
    Save the whole response to `answer.json`. If the call fails, print "Jev unavailable"
    and give your own recommendation with reasons. Stop there.
 

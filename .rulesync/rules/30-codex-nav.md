@@ -29,7 +29,7 @@ homelab-watchdog) have empty graphs, and non-code files (YAML, Markdown, JSON) a
 Keep output small: grep and line ranges, not whole files.
 
 **Homelab tools** (Vault, Grafana, ArgoCD, kubectl, OpenViking, gh, Context7…) come from the
-`cellarette` MCP server. If it is missing from the session, say so once and continue with what is
+`splicedock` MCP server. If it is missing from the session, say so once and continue with what is
 available; do not keep asking for it.
 
 @RTK.md

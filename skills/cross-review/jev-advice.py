@@ -4,7 +4,7 @@
 Jev is third-party (TypeSafe). It receives ONLY metadata: file paths, per-file +/- line
 counts, deterministic rank reasons, and a summary of at most 3 plain sentences written by the
 agent without code. It never receives the diff, code or secrets. The agent calls the MCP
-tool mcp__cellarette__jev__ask itself. This script builds the request and reads the answer.
+tool mcp__splicedock__jev__ask itself. This script builds the request and reads the answer.
 Failure, low confidence or a missing answer means "ignored", and the review continues.
 
   jev-advice.py rank-state --repo DIR --base REF --rank N --tier T --summary TEXT [--reason R]...
