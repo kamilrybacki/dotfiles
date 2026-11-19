@@ -13,17 +13,14 @@ agent's native file from it.
 .rulesync/rules/
   10-splicedock-first.md     targets: claudecode, codexcli      (shared)
   20-openviking-kb.md        targets: claudecode, codexcli      (shared)
-  25-openviking-kb-hermes.md targets: hermesagent               (Hermes variant)
   30-claude-graft.md         targets: claudecode                (Claude only)
   30-codex-nav.md            targets: codexcli                  (Codex only)
   30-pi-scope.md             targets: pi                        (Pi only)
-  05-hermes-conventions.md   targets: hermesagent               (Hermes only)
-  40-hermes-facts.md         targets: hermesagent               (Hermes only)
-  50-jev-decisions.md        targets: claudecode, codexcli, hermesagent, pi (shared; see jev/README.md)
+  50-jev-decisions.md        targets: claudecode, codexcli, pi (shared; see jev/README.md)
 ```
 
 Every rule is `root: true`, so all rules for one target combine into a single
-inlined file (needed for Codex/Hermes, which cannot `@import`). Filename prefixes
+inlined file (needed for Codex, which cannot `@import`). Filename prefixes
 (`05`,`10`,`20`,…) control section order within each file.
 
 ## Targets → live files
@@ -33,7 +30,6 @@ inlined file (needed for Codex/Hermes, which cannot `@import`). Filename prefixe
 | Claude Code   | `claudecode`    | `~/.claude/CLAUDE.md`                    | direct (global) |
 | Codex         | `codexcli`      | `~/.codex/AGENTS.md`                     | direct (`-o ~/.codex`) |
 | Pi            | `pi`            | `~/.pi/agent/AGENTS.md`                  | direct (`-o ~/.pi/agent`); `pi/extensions/*.ts` copied to `~/.pi/agent/extensions/` |
-| Hermes        | `hermesagent`   | `helm/charts/hermes/files/AGENTS.md`    | staged → commit + PR → ArgoCD → ConfigMap → PVC |
 
 `rulesync.jsonc` sets `delete: false` so the `~/.claude/rules/` tree (Claude-only
 language rules, installed by `scripts/claude-home.py`) is NEVER pruned by rulesync.
@@ -47,8 +43,7 @@ npm run agents:sync    # regenerate every agent file from .rulesync/
 npm run agents:check   # drift guard: non-zero exit if any file is out of sync (CI / pre-commit)
 ```
 
-Edit a shared block once in `.rulesync/rules/*.md`, run `agents:sync`. For Hermes,
-the helm file is updated locally — commit + PR it; ArgoCD delivers it to the PVC.
+Edit a shared block once in `.rulesync/rules/*.md`, run `agents:sync`.
 
 ## Skills & plugins (not rulesync)
 

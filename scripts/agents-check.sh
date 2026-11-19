@@ -7,8 +7,6 @@ cd "$(dirname "$0")/.."
 RS=./node_modules/.bin/rulesync
 [ -x "$RS" ] || { echo "rulesync not installed — run: npm install" >&2; exit 1; }
 
-HELM_REPO="${HELM_REPO:-$HOME/Code/helm}"
-HERMES_FILE="$HELM_REPO/charts/hermes/files/AGENTS.md"
 rc=0
 . scripts/lib/stage-mcp.sh
 
@@ -23,18 +21,6 @@ if [ -d "$PI_DIR" ]; then
   for f in pi/extensions/*.ts; do
     cmp -s "$f" "$PI_DIR/extensions/$(basename "$f")" || { echo "DRIFT  pi extension: $(basename "$f")"; rc=1; }
   done
-fi
-
-# Hermes: render to staging and byte-compare against the committed helm file.
-STAGE="$(mktemp -d)"; trap 'rm -rf "$STAGE"' EXIT
-"$RS" generate --targets hermesagent --features rules -o "$STAGE" >/dev/null 2>&1 || true
-if [ -f "$STAGE/.hermes.md" ] && [ -f "$HERMES_FILE" ]; then
-  if cmp -s "$STAGE/.hermes.md" "$HERMES_FILE"; then
-    echo "ok     hermes"
-  else
-    echo "DRIFT  hermes: $HERMES_FILE differs from source — run npm run agents:sync"
-    rc=1
-  fi
 fi
 
 # Our hand-authored skills (byte-faithful copy, not rulesync-generated).
