@@ -1,7 +1,7 @@
 ---
 root: true
-targets: ["claudecode", "codexcli", "hermesagent", "pi"]
-description: "Jev decision layer: typed per-turn harness decisions (shared: Claude Code + Codex + Hermes)"
+targets: ["claudecode", "codexcli", "pi"]
+description: "Jev decision layer: typed per-turn harness decisions (shared: Claude Code + Codex + Pi)"
 globs: ["**/*"]
 ---
 
@@ -38,7 +38,7 @@ Treat context, tools, permissions and routing as per-turn decisions.
   area-specific gotcha belongs in a fragment (with a precise `when:`), not in this
   global file.
 - **Typed decisions on demand:** `jev-gate ask` (stdin `{"state", "questions"}`) on
-  workstations, or the splicedock tool **`jev__ask`** (Hermes, Paperclip agents, any MCP client).
+  workstations, or the splicedock tool **`jev__ask`** (any MCP client).
 - **Sensitivity routing:** `jev-gate route --task … --file …` returns `open` /
   `standard` / `restricted`. Secrets, `.env`, infra config and network topology are
   **restricted**: they go to first-party frontier models only, never to cheap or open

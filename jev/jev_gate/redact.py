@@ -1,7 +1,6 @@
 """Scrub credentials from text before it leaves the homelab.
 
-Patterns merge helm/charts/hermes/files/redact-patterns.txt with the
-dotfiles pre-commit secret scanner, plus generic KEY=value assignments.
+Patterns come from the dotfiles pre-commit secret scanner, plus generic KEY=value assignments.
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 ---
 root: true
-targets: ["claudecode", "codexcli", "hermesagent"]
+targets: ["claudecode", "codexcli"]
 description: "Operator preference: use the local REA lab methodology for every reverse-engineering task"
 globs: ["**/*"]
 ---

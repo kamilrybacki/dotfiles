@@ -11,9 +11,6 @@ cd "$(dirname "$0")/.."   # dotfiles root (holds .rulesync/ + rulesync.jsonc)
 RS=./node_modules/.bin/rulesync
 [ -x "$RS" ] || { echo "rulesync not installed — run: npm install" >&2; exit 1; }
 
-HELM_REPO="${HELM_REPO:-$HOME/Code/helm}"
-HERMES_FILE="$HELM_REPO/charts/hermes/files/AGENTS.md"
-
 . scripts/lib/stage-mcp.sh
 
 # Helpers on PATH first: splicedock-headers is the MCP headersHelper below.
@@ -55,19 +52,6 @@ fi
 # rules/ tree. Additive; never touches permissions or secrets.
 python3 scripts/claude-home.py sync
 
-# Hermes lives in a container: render to staging, copy into the helm chart.
-# The actual deploy is GitOps — commit + PR the helm change; ArgoCD seeds the PVC.
-STAGE="$(mktemp -d)"
-trap 'rm -rf "$STAGE"' EXIT
-"$RS" generate --targets hermesagent --features rules -o "$STAGE"
-if [ -f "$STAGE/.hermes.md" ] && [ -f "$HERMES_FILE" ]; then
-  if cmp -s "$STAGE/.hermes.md" "$HERMES_FILE"; then
-    echo "hermes: unchanged"
-  else
-    cp "$STAGE/.hermes.md" "$HERMES_FILE"
-    echo "hermes: UPDATED $HERMES_FILE — commit + PR to deploy (ArgoCD → ConfigMap → PVC)"
-  fi
-fi
 # Our hand-authored skills: copied byte-faithfully. rulesync's skill generator
 # strips Claude-specific SKILL.md frontmatter (`args:`, folds `description`), so
 # skills are versioned as plain files and cp'd, NOT routed through rulesync.
