@@ -6,7 +6,7 @@ globs: ["**/*"]
 ---
 ## Knowledge Base — OpenViking (consult before web search / trial-and-error)
 
-**OpenViking is the homelab context DB** — accumulated gotchas, past decisions, infra facts, and Hermes's research notes, as a `viking://` virtual FS. Access via cellarette `openviking__*` tools (present in the `workspace` profile).
+**OpenViking is the homelab context DB** — accumulated gotchas, past decisions, infra facts, and Hermes's research notes, as a `viking://` virtual FS. Access via splicedock `openviking__*` tools (present in the `workspace` profile).
 
 - **START HERE for any homelab question:** `viking://resources/homelab-knowledge/homelab-canonical-state.md` is the SINGLE canonical description of the homelab — hosts, cluster, GitOps, secrets, observability, what runs, the agent layer, accepted risks, conventions and gotchas. Hermes re-verifies it against live systems every morning at 06:15 UTC, so it carries a trustworthy "last verified" date. Read it before answering, and do NOT create a second copy of those facts anywhere; if something is missing or wrong, fix it there.
 - **Consult it EARLY** on any homelab / infra / personal-project task, before reaching for WebSearch/Exa or trial-and-error. `openviking__search "<topic>"` (semantic) or `openviking__grep` / `openviking__glob` for exact strings. A 2-second lookup often surfaces a gotcha already paid for once.

@@ -6,7 +6,7 @@ Jev is third-party. The question carries only a plain-language summary written b
 for the hard overrides below.
 
   route.py question --summary TEXT
-      Prints the JSON request {"state", "questions"} for mcp__cellarette__jev__ask.
+      Prints the JSON request {"state", "questions"} for mcp__splicedock__jev__ask.
   route.py format --task-file FILE --answer FILE
       Prints sorted probabilities, confidence and a recommendation, with hard overrides applied first.
 """

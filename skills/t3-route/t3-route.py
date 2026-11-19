@@ -28,7 +28,7 @@ HERE = Path(__file__).resolve().parent
 SKILLS = HERE.parent
 REFUSED_BIN = Path("/usr/local/bin/t3")
 # Repos that are infra or secret-bearing as a whole. Open and cheap routes never get them.
-DENY_REPOS = {"helm", "ansible", "argocd-apps", "n8n-workflows", "cellarette", "dotfiles"}
+DENY_REPOS = {"helm", "ansible", "argocd-apps", "n8n-workflows", "splicedock", "cellarette", "dotfiles"}
 # Tracked-file labels that make a whole worktree restricted. "infra" is left out on
 # purpose: Dockerfiles and CI workflows would flag nearly every repo.
 DENY_LABELS = {"secrets", "network"}

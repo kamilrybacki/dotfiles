@@ -4,27 +4,27 @@
   // `npm run agents:sync` — rulesync MERGES these in, preserving all other
   // settings. No secrets here, so this file is safe to commit.
   //
-  // cellarette is reached two ways, chosen per host:
+  // splicedock is reached two ways, chosen per host:
   //   - any machine (laptop, off-LAN too): the public edge
   //     https://splicedock-mcp.<domain>/mcp (Cloudflare -> Caddy -> in-cluster
-  //     cellarette, profile `workspace`). It needs `Authorization: Bearer`; the
-  //     `cellarette-headers` headersHelper (cellarette/, linked into ~/.local/bin)
-  //     adds it from ~/.config/cellarette/token (filled by cellarette-token-sync).
+  //     splicedock, profile `workspace`). It needs `Authorization: Bearer`; the
+  //     `splicedock-headers` headersHelper (splicedock/, linked into ~/.local/bin)
+  //     adds it from ~/.config/splicedock/token (filled by splicedock-token-sync).
   //   - lw-main: the local aggregator on :8788 (profile `default` = all tools; it
   //     REJECTS any Authorization header, so the helper sends none to localhost).
   // agents:sync never generates from this file directly: scripts/lib/stage-mcp.sh
-  // copies it and `claude-home.py render-mcp` pins the cellarette line to this
-  // host's URL (claude-home/hosts/<hostname>.json `cellaretteUrl`, env
-  // CELLARETTE_MCP_URL, else the edge below). Codex has no headersHelper, so it
-  // gets bearer_token_env_var = CELLARETTE_MCP_TOKEN (export it in your shell rc).
-  // Keep the cellarette entry on ONE line — render-mcp matches it.
+  // copies it and `claude-home.py render-mcp` pins the splicedock line to this
+  // host's URL (claude-home/hosts/<hostname>.json `splicedockUrl`, env
+  // SPLICEDOCK_MCP_URL, else the edge below). Codex has no headersHelper, so it
+  // gets bearer_token_env_var = SPLICEDOCK_MCP_TOKEN (export it in your shell rc).
+  // Keep the splicedock entry on ONE line — render-mcp matches it.
   //
   // headersHelper only runs in a workspace you have trusted (the folder trust
   // dialog); headless `claude -p` in an untrusted dir connects without headers.
   "mcpServers": {
     "graft": { "command": "graft", "args": ["mcp"] },
     "jcodemunch": { "command": "uvx", "args": ["--from", "jcodemunch-mcp==1.108.401", "jcodemunch-mcp"] },
-    "cellarette-operator": { "targets": ["claudecode"], "type": "http", "url": "https://splicedock-mcp.kamilandrzejrybacki.dpdns.org/mcp?profile=operator", "headersHelper": "cellarette-headers" },
-    "cellarette": { "type": "http", "url": "https://splicedock-mcp.kamilandrzejrybacki.dpdns.org/mcp?profile=workspace", "headersHelper": "cellarette-headers" }
+    "splicedock-operator": { "targets": ["claudecode"], "type": "http", "url": "https://splicedock-mcp.kamilandrzejrybacki.dpdns.org/mcp?profile=operator", "headersHelper": "splicedock-headers" },
+    "splicedock": { "type": "http", "url": "https://splicedock-mcp.kamilandrzejrybacki.dpdns.org/mcp?profile=workspace", "headersHelper": "splicedock-headers" }
   }
 }

@@ -4,14 +4,14 @@
   claude-home.py sync     merge claude-home/settings.json into ~/.claude/settings.json,
                           copy hooks, RTK.md and the rules/ tree
   claude-home.py check    read-only drift report (exit 1 on drift)
-  claude-home.py url      print the cellarette MCP URL this host uses
+  claude-home.py url      print the splicedock MCP URL this host uses
   claude-home.py render-mcp <mcp.jsonc> <claudecode|codexcli>
-                          rewrite the cellarette line of a STAGED copy of
+                          rewrite the splicedock line of a STAGED copy of
                           .rulesync/mcp.jsonc for this host and agent
 
 The settings merge is additive and idempotent. It never touches permissions,
 sandbox, autoMode, skipDangerousModePermissionPrompt or any env key it does not
-own (e.g. a CELLARETTE_MCP_TOKEN already there). Preferences (model, effort,
+own (e.g. a SPLICEDOCK_MCP_TOKEN already there). Preferences (model, effort,
 statusLine, ...) are only set when absent, so /model choices survive a sync.
 """
 import copy
@@ -170,41 +170,41 @@ def check() -> int:
     return rc
 
 
-def cellarette_url() -> str:
-    return os.environ.get("CELLARETTE_MCP_URL") or host_overlay().get("cellaretteUrl") or EDGE_URL
+def splicedock_url() -> str:
+    return os.environ.get("SPLICEDOCK_MCP_URL") or host_overlay().get("splicedockUrl") or EDGE_URL
 
 
 def render_mcp(path: str, target: str) -> int:
-    """Pin the cellarette server to this host's URL. Claude Code keeps the
+    """Pin the splicedock server to this host's URL. Claude Code keeps the
     headersHelper (it decides per URL whether to send the token); Codex has no
     headersHelper, so it gets bearer_token_env_var for the edge and nothing for
     localhost (the :8788 aggregator rejects any Authorization header)."""
     if target not in ("claudecode", "codexcli"):
         sys.exit(f"render-mcp: unknown target {target}")
-    url = cellarette_url()
+    url = splicedock_url()
     entry = {"type": "http", "url": url}
     if target == "claudecode":
-        entry["headersHelper"] = "cellarette-headers"
+        entry["headersHelper"] = "splicedock-headers"
     elif url.startswith("https://"):
-        entry["bearer_token_env_var"] = "CELLARETTE_MCP_TOKEN"
+        entry["bearer_token_env_var"] = "SPLICEDOCK_MCP_TOKEN"
     src = Path(path)
     lines = src.read_text().splitlines(keepends=True)
-    hits = [i for i, line in enumerate(lines) if line.lstrip().startswith('"cellarette":')]
+    hits = [i for i, line in enumerate(lines) if line.lstrip().startswith('"splicedock":')]
     if len(hits) != 1:
-        sys.exit(f"render-mcp: expected exactly one cellarette line in {path}, found {len(hits)}")
+        sys.exit(f"render-mcp: expected exactly one splicedock line in {path}, found {len(hits)}")
     i = hits[0]
     indent = lines[i][: len(lines[i]) - len(lines[i].lstrip())]
     comma = "," if lines[i].rstrip().endswith(",") else ""
-    lines[i] = f'{indent}"cellarette": {json.dumps(entry)}{comma}\n'
+    lines[i] = f'{indent}"splicedock": {json.dumps(entry)}{comma}\n'
     src.write_text("".join(lines))
-    print(f"cellarette ({target}): {url}")
+    print(f"splicedock ({target}): {url}")
     return 0
 
 
 if __name__ == "__main__":
     if sys.argv[1:2] == ["render-mcp"] and len(sys.argv) == 4:
         sys.exit(render_mcp(sys.argv[2], sys.argv[3]))
-    commands = {"sync": sync, "check": check, "url": lambda: print(cellarette_url()) or 0}
+    commands = {"sync": sync, "check": check, "url": lambda: print(splicedock_url()) or 0}
     if len(sys.argv) != 2 or sys.argv[1] not in commands:
         sys.exit(f"usage: {sys.argv[0]} {{sync|check|url|render-mcp <mcp.jsonc> <target>}}")
     sys.exit(commands[sys.argv[1]]())

@@ -12,9 +12,9 @@
 #   4. graft CLI (code-nav MCP server)             (npm, ~/.local)
 #   5. jev-gate hooks                              (jev/install.sh)
 #   6. instructions, MCP, settings, hooks, rules   (npm run agents:sync)
-#   7. secrets: cellarette edge token + Jev key, from Vault when reachable,
+#   7. secrets: splicedock edge token + Jev key, from Vault when reachable,
 #      otherwise prints the one command to run. Never prints a secret.
-#   8. verifies the cellarette MCP endpoint answers and agents:check is clean.
+#   8. verifies the splicedock MCP endpoint answers and agents:check is clean.
 #
 # Off-LAN hosts reach the homelab MCP tools through the public edge
 # (HTTPS + Bearer, see .rulesync/mcp.jsonc); lw-main uses its local :8788.
@@ -23,7 +23,7 @@ cd "$(dirname "$0")/.."
 
 GRAFT_VERSION="0.10.1"
 LOCAL_BIN="$HOME/.local/bin"
-CELLARETTE_TOKEN="${XDG_CONFIG_HOME:-$HOME/.config}/cellarette/token"
+SPLICEDOCK_TOKEN="${XDG_CONFIG_HOME:-$HOME/.config}/splicedock/token"
 JEV_KEY="$HOME/.config/jev/api_key"
 todo=()
 
@@ -94,13 +94,13 @@ step "secrets"
 vault_ready() { [ -n "${VAULT_ADDR:-}" ] && { [ -n "${VAULT_TOKEN:-}" ] || [ -r "${VAULT_TOKEN_FILE:-$HOME/.vault-token}" ]; }; }
 url="$(python3 scripts/claude-home.py url)"
 if [[ "$url" != https://* ]]; then
-  echo "cellarette: local aggregator ($url), no token needed"
-elif [ -s "$CELLARETTE_TOKEN" ] || [ -n "${CELLARETTE_MCP_TOKEN:-}" ]; then
-  echo "cellarette: token present"
+  echo "splicedock: local aggregator ($url), no token needed"
+elif [ -s "$SPLICEDOCK_TOKEN" ] || [ -n "${SPLICEDOCK_MCP_TOKEN:-}" ]; then
+  echo "splicedock: token present"
 elif vault_ready; then
-  cellarette-token-sync
+  splicedock-token-sync
 else
-  todo+=("cellarette token: VAULT_ADDR=http://<vault>:8200 cellarette-token-sync   (or: cellarette-token-sync --stdin)")
+  todo+=("splicedock token: VAULT_ADDR=http://<vault>:8200 splicedock-token-sync   (or: splicedock-token-sync --stdin)")
 fi
 if [ -s "$JEV_KEY" ] || [ -n "${TYPESAFE_API_KEY:-}" ]; then
   echo "jev: key present"
@@ -111,25 +111,25 @@ else
 fi
 # This script runs in a non-interactive shell that never sources the rc files,
 # so an unset variable here does not mean the user's shells lack it.
-if have codex && [[ "$url" == https://* ]] && [ -z "${CELLARETTE_MCP_TOKEN:-}" ] \
-   && ! grep -qs 'CELLARETTE_MCP_TOKEN' ~/.bashrc ~/.zshrc ~/.profile ~/.zprofile ~/.bash_profile; then
+if have codex && [[ "$url" == https://* ]] && [ -z "${SPLICEDOCK_MCP_TOKEN:-}" ] \
+   && ! grep -qs 'SPLICEDOCK_MCP_TOKEN' ~/.bashrc ~/.zshrc ~/.profile ~/.zprofile ~/.bash_profile; then
   todo+=("Codex reads the edge token from the env; add to your shell rc:
-      [ -r ~/.config/cellarette/token ] && export CELLARETTE_MCP_TOKEN=\"\$(<~/.config/cellarette/token)\"")
+      [ -r ~/.config/splicedock/token ] && export SPLICEDOCK_MCP_TOKEN=\"\$(<~/.config/splicedock/token)\"")
 fi
 
 step "verify"
 # MCP initialize through the same headersHelper Claude Code uses; headers go
 # to curl on stdin, never to the terminal.
 init='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"bootstrap","version":"0"}}}'
-if headers="$(CLAUDE_CODE_MCP_SERVER_URL="$url" cellarette-headers 2>/dev/null)"; then
+if headers="$(CLAUDE_CODE_MCP_SERVER_URL="$url" splicedock-headers 2>/dev/null)"; then
   code="$(jq -r 'to_entries[] | "\(.key): \(.value)"' <<<"$headers" \
     | curl -s -o /dev/null -w '%{http_code}' --max-time 15 -X POST "$url" \
         -H @- -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
         --data "$init" || true)"
-  echo "cellarette MCP: HTTP $code ($url)"
-  [ "$code" = 200 ] || todo+=("cellarette MCP answered HTTP $code: check the token / network")
+  echo "splicedock MCP: HTTP $code ($url)"
+  [ "$code" = 200 ] || todo+=("splicedock MCP answered HTTP $code: check the token / network")
 else
-  echo "cellarette MCP: skipped (no token yet)"
+  echo "splicedock MCP: skipped (no token yet)"
 fi
 npm run --silent agents:check || todo+=("agents:check reported drift (see above)")
 

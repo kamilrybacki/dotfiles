@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Codex launcher for non-interactive parents (T3 Code, cron, IDEs) that never source ~/.bashrc.
+# Codex's HTTP MCP auth only reads SPLICEDOCK_MCP_TOKEN (bearer_token_env_var); this loads it from
+# the file splicedock-token-sync writes, without printing it, then execs the real codex.
+set -euo pipefail
+if [ -z "${SPLICEDOCK_MCP_TOKEN:-}" ]; then
+  token_file="${XDG_CONFIG_HOME:-$HOME/.config}/splicedock/token"
+  if [ -r "$token_file" ]; then
+    SPLICEDOCK_MCP_TOKEN="$(tr -d '[:space:]' < "$token_file")"
+    export SPLICEDOCK_MCP_TOKEN
+  fi
+fi
+exec "${CODEX_BIN:-$HOME/.local/bin/codex}" "$@"

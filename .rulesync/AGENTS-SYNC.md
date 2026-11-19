@@ -1,7 +1,7 @@
 # Agent instruction sync (rulesync)
 
 One source of truth for every agent's instruction file, so shared policy blocks
-(Cellarette-first, OpenViking KB, …) are written once and never hand-copied.
+(Splicedock-first, OpenViking KB, …) are written once and never hand-copied.
 
 Powered by [rulesync](https://github.com/dyoshikawa/rulesync) — pinned in
 `package.json`. The source lives in `.rulesync/rules/*.md`; rulesync renders each
@@ -11,7 +11,7 @@ agent's native file from it.
 
 ```
 .rulesync/rules/
-  10-cellarette-first.md     targets: claudecode, codexcli      (shared)
+  10-splicedock-first.md     targets: claudecode, codexcli      (shared)
   20-openviking-kb.md        targets: claudecode, codexcli      (shared)
   25-openviking-kb-hermes.md targets: hermesagent               (Hermes variant)
   30-claude-graft.md         targets: claudecode                (Claude only)
@@ -80,21 +80,21 @@ registered only when `jcodemunch-mcp` is on PATH.
 
 ## MCP: one config, any host
 
-`.rulesync/mcp.jsonc` points the `cellarette` server at the public edge
+`.rulesync/mcp.jsonc` points the `splicedock` server at the public edge
 (`https://splicedock-mcp.<domain>/mcp?profile=workspace`). Before rulesync runs,
 `scripts/lib/stage-mcp.sh` copies `.rulesync/` to a temp dir and
 `claude-home.py render-mcp` rewrites that one line per host and agent:
 
-- URL: `$CELLARETTE_MCP_URL`, else `claude-home/hosts/<hostname -s>.json`
-  (`cellaretteUrl`), else the edge. lw-main's overlay pins `http://localhost:8788/mcp?profile=default`.
-- Claude Code: `headersHelper: cellarette-headers`. The helper sends `{}` to
+- URL: `$SPLICEDOCK_MCP_URL`, else `claude-home/hosts/<hostname -s>.json`
+  (`splicedockUrl`), else the edge. lw-main's overlay pins `http://localhost:8788/mcp?profile=default`.
+- Claude Code: `headersHelper: splicedock-headers`. The helper sends `{}` to
   localhost (`:8788` rejects any Authorization header), a Bearer token to the
   edge host only, and refuses every other host.
-- Codex: `bearer_token_env_var = "CELLARETTE_MCP_TOKEN"` for https URLs only.
-  Export it in your shell rc from `~/.config/cellarette/token`.
+- Codex: `bearer_token_env_var = "SPLICEDOCK_MCP_TOKEN"` for https URLs only.
+  Export it in your shell rc from `~/.config/splicedock/token`.
 
-The token lives only in `~/.config/cellarette/token` (0600), written by
-`cellarette-token-sync` (from Vault `secret/homelab/cellarette/mcp`, or `--stdin`).
+The token lives only in `~/.config/splicedock/token` (0600), written by
+`splicedock-token-sync` (from Vault `secret/homelab/splicedock/mcp`, or `--stdin`).
 Gotchas: rulesync `-g` replaces each MCP server entry as a whole (stale fields
 vanish), and passes unknown keys such as `bearer_token_env_var` through to Codex.
 Claude Code runs a `headersHelper` only in a trusted workspace — accept the
@@ -103,8 +103,8 @@ tools; those exist only on lw-main's local aggregator.
 
 ## Bare-install contract
 
-A fresh machine needs only this repo and network access to the cellarette edge:
-`npm run agents:bootstrap`, then the token. It gives rules + MCP (cellarette,
+A fresh machine needs only this repo and network access to the splicedock edge:
+`npm run agents:bootstrap`, then the token. It gives rules + MCP (splicedock,
 graft) + skills + plugins + hooks + settings, and prints what is left to do.
 
 ## Onboard a NEW agent

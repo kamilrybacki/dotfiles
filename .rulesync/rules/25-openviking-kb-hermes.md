@@ -7,7 +7,7 @@ globs: ["**/*"]
 ## Knowledge base — OpenViking (consult first)
 
 - **OpenViking is the homelab context DB** (`viking://` virtual FS) — accumulated gotchas,
-  past decisions, infra facts, and your own research-cron output. Access via the cellarette
+  past decisions, infra facts, and your own research-cron output. Access via the splicedock
   `openviking__*` tools (in your `hermes-devops` profile: search, read, grep, glob, list, tree,
   find, write, add_resource, remember, forget, health).
 - **START HERE for any homelab question:**

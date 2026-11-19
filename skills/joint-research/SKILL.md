@@ -5,12 +5,12 @@ description: >
   topic in parallel from complementary angles, then Claude merges both into a single
   report. Use when the user invokes /joint-research or asks for research "with Hermes",
   "joint research", or "both of you look into". Requires kubectl access to ns hermes
-  (api_server), cellarette exa__* tools and a live Hermes gateway.
+  (api_server), splicedock exa__* tools and a live Hermes gateway.
 metadata:
   version: "1.0.0"
   last_updated: "2026-10-25"
   status: active
-  requires: "kubectl to ns hermes (hermes-api :8642), cellarette MCP (exa__*), Hermes live in ns hermes"
+  requires: "kubectl to ns hermes (hermes-api :8642), splicedock MCP (exa__*), Hermes live in ns hermes"
   related_skills:
     - deep-research
 ---

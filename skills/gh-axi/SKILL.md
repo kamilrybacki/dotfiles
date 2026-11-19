@@ -24,7 +24,7 @@ output is token-efficient TOON with contextual `help:` next-step hints.
 
 1. **Local CLI (this machine):** the pinned binary is on PATH — invoke `gh-axi <command>`
    directly. **Do not** use `npx -y gh-axi` (that pulls an unpinned version at runtime).
-2. **In-cluster via cellarette MCP:** the `gh__run` / `gh__help` tools run gh-axi server-side
+2. **In-cluster via splicedock MCP:** the `gh__run` / `gh__help` tools run gh-axi server-side
    with a hardened deny policy. Same command surface; some mutations are blocked at the proxy.
 
 gh-axi shells out to `gh`, which must be authenticated (`gh auth login`, already done as
@@ -55,7 +55,7 @@ putting `--repo owner/name` **after** the command. Run `gh-axi <command> --help`
 - repository configuration, branch-protection changes
 - `secret` / `variable` set/delete, and raw `api` writes
 
-The cellarette MCP path **enforces** most of these denials at the proxy (pr create/merge,
+The splicedock MCP path **enforces** most of these denials at the proxy (pr create/merge,
 release *, run cancel/delete/rerun, secret/variable, raw api, setup/update are blocked). The
 local CLI does **not** enforce them — you must follow the policy yourself. When in doubt, stop
 and ask.

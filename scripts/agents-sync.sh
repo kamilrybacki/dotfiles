@@ -16,19 +16,29 @@ HERMES_FILE="$HELM_REPO/charts/hermes/files/AGENTS.md"
 
 . scripts/lib/stage-mcp.sh
 
-# Helpers on PATH first: cellarette-headers is the MCP headersHelper below.
-bash cellarette/install.sh
+# Helpers on PATH first: splicedock-headers is the MCP headersHelper below.
+bash splicedock/install.sh
 
 # Local agents → their live global paths.
 # rules: claudecode supports global; codexcli does not, so it needs -o ~/.codex.
 # mcp:   both support global (-g) and MERGE into the existing config, preserving
 #        all other settings (model/auth in config.toml, projects/history in
 #        ~/.claude.json). Rendered per host from a staged copy (lib/stage-mcp.sh);
-#        no secret is ever written — the token stays in ~/.config/cellarette/token.
+#        no secret is ever written — the token stays in ~/.config/splicedock/token.
 "$RS" generate -g --targets claudecode --features rules
 mcp_generate claudecode
 "$RS" generate --targets codexcli --features rules -o "$HOME/.codex"
 mcp_generate codexcli
+# rulesync merges MCP servers and never removes one, so drop the pre-rename
+# names (cellarette, cellarette-operator) once; a no-op when they are gone.
+if command -v claude >/dev/null; then
+  for s in cellarette cellarette-operator; do
+    claude mcp remove -s user "$s" >/dev/null 2>&1 && echo "claude: removed legacy MCP server $s"
+  done
+fi
+if command -v codex >/dev/null; then
+  codex mcp remove cellarette >/dev/null 2>&1 && echo "codex: removed legacy MCP server cellarette"
+fi
 # Pi: rules only (rulesync's pi target has no MCP; Pi has no MCP client) plus our
 # extensions. models.json/auth.json hold the LiteLLM key and stay host-local.
 PI_DIR="${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}"

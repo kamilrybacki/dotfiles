@@ -10,7 +10,7 @@ globs: ["**/*"]
   what ArgoCD manages; change git instead.
 - Secrets live in Vault / SopsSecret, never in images or plaintext.
 - Push notifications go via ntfy, not new bots.
-- Prefer cellarette MCP tools (gh, grafana, argocd, obsidian, exa) over raw shell
+- Prefer splicedock MCP tools (gh, grafana, argocd, obsidian, exa) over raw shell
   where one exists.
 - **Code navigation = Graft, not raw grep/read.** When you clone a repo to work on it,
   run `graft build .` ONCE (builds a git-ignored `graft/` cache — regenerable, never commit

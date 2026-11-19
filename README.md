@@ -110,13 +110,13 @@ npm run agents:bootstrap          # needs: claude, node/npm, python3, jq, git, c
 ```
 
 Homelab MCP tools work from anywhere: hosts other than lw-main talk to the
-public cellarette edge (`https://splicedock-mcp.<domain>/mcp`, Bearer token);
+public splicedock edge (`https://splicedock-mcp.<domain>/mcp`, Bearer token);
 lw-main uses its local `:8788` aggregator (`claude-home/hosts/lw-main.json`).
 The token is never stored in this repo. Fetch it once per machine:
 
 ```bash
-VAULT_ADDR=http://<vault>:8200 cellarette-token-sync   # on the LAN / WireGuard
-cellarette-token-sync --stdin                          # anywhere else: paste it
+VAULT_ADDR=http://<vault>:8200 splicedock-token-sync   # on the LAN / WireGuard
+splicedock-token-sync --stdin                          # anywhere else: paste it
 ```
 
 The bootstrap prints whatever is left to do (token, Jev key, PATH, Codex env
@@ -149,10 +149,10 @@ or `python3` only resolve to a Windows binary under `/mnt/`. Logins (`claude`,
 
 `scripts/setup-agent-ds.sh` creates an unprivileged WSL account `agent-ds` and
 configures Claude Code there to use the homelab LiteLLM (DeepSeek-only key, capped)
-and a read-only cellarette profile token (`deepseek-ro`), with `bypassPermissions`.
+and a read-only splicedock profile token (`deepseek-ro`), with `bypassPermissions`.
 
 **Why a separate account:** the harness runs with permissions bypassed, so it must
-never see your `~/.ssh`, `~/.kube`, or the full cellarette token. `agent-ds` has no
+never see your `~/.ssh`, `~/.kube`, or the full splicedock token. `agent-ds` has no
 sudo, and the script sets your own home directory to `750` so `agent-ds` cannot read it. You keep sudo.
 
 **Needs:** the WireGuard tunnel up, key-based `ssh` to lw-main (`kamil-rybacki@192.168.0.111`),
@@ -170,7 +170,7 @@ It is idempotent. Re-run it after rotating a key. Start the harness with `sudo -
 **Revoke:**
 
 - LiteLLM: delete the virtual key with alias `laptop-agent-ds`.
-- cellarette: revoke the `deepseek-ro` profile token (Vault `secret/homelab/cellarette/deepseek`).
+- splicedock: revoke the `deepseek-ro` profile token (Vault `secret/homelab/splicedock/deepseek`).
 - Local: `sudo deluser --remove-home agent-ds` removes the account and its files.
 
 **Gotchas:**
@@ -238,7 +238,7 @@ the repo. It reviews only the diff in the prompt.
 - Start a thread on the chosen agent: `/t3-route <task>`. It prints the plan first and
   starts the thread (`--yes`) only after you confirm. `opencode_kimi` and `pi_free` are
   refused for infra or secret tasks and for infra repos (helm, ansible, argocd-apps,
-  n8n-workflows, cellarette, dotfiles, or any repo tracking secrets or network files).
+  n8n-workflows, splicedock (checkout dir `cellarette`), dotfiles, or any repo tracking secrets or network files).
   Set the Pi model in `~/.config/t3-route/routes.json` (`{"routes": {"pi_free": {"model": "..."}}}`).
 - Data labelling: run `/gen-validate` in a Claude thread. It is not an OpenCode agent.
 

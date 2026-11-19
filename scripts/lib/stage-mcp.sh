@@ -1,6 +1,6 @@
 # Sourced by agents-sync.sh / agents-check.sh (cwd = dotfiles root, $RS set).
 # mcp_generate <claudecode|codexcli> [rulesync flags...]
-#   Copies the rulesync sources to a temp dir, pins the cellarette server to this
+#   Copies the rulesync sources to a temp dir, pins the splicedock server to this
 #   host (claude-home.py render-mcp) and runs `rulesync generate -g` for the MCP
 #   feature from there, so the committed .rulesync/mcp.jsonc stays host-neutral.
 mcp_generate() {
