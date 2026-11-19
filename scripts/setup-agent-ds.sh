@@ -15,7 +15,7 @@ LW="${AGENT_DS_LW:-kamil-rybacki@192.168.0.111}"
 AGENT="agent-ds"
 AH="/home/${AGENT}"
 LITELLM_URL="${AGENT_DS_LITELLM_URL:-http://192.168.0.60:30400}"
-MCP_URL="${AGENT_DS_MCP_URL:-https://cellarette-mcp.kamilandrzejrybacki.dpdns.org/mcp}"
+MCP_URL="${AGENT_DS_MCP_URL:-https://splicedock-mcp.kamilandrzejrybacki.dpdns.org/mcp}"
 MODEL="deepseek/deepseek-chat"
 
 step() { printf '\n== %s ==\n' "$*"; }

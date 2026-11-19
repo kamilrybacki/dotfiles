@@ -30,7 +30,7 @@ HOME = Path.home()
 CLAUDE = HOME / ".claude"
 SETTINGS = CLAUDE / "settings.json"
 
-EDGE_URL = "https://cellarette-mcp.kamilandrzejrybacki.dpdns.org/mcp?profile=workspace"
+EDGE_URL = "https://splicedock-mcp.kamilandrzejrybacki.dpdns.org/mcp?profile=workspace"
 RTK_HOOK = "rtk-rewrite.sh"
 RTK_HASH = CLAUDE / "hooks" / ".rtk-hook.sha256"
 HOOK_FILES = [RTK_HOOK, "ov-mirror-reminder.sh"]
