@@ -110,7 +110,7 @@ npm run agents:bootstrap          # needs: claude, node/npm, python3, jq, git, c
 ```
 
 Homelab MCP tools work from anywhere: hosts other than lw-main talk to the
-public cellarette edge (`https://cellarette-mcp.<domain>/mcp`, Bearer token);
+public cellarette edge (`https://splicedock-mcp.<domain>/mcp`, Bearer token);
 lw-main uses its local `:8788` aggregator (`claude-home/hosts/lw-main.json`).
 The token is never stored in this repo. Fetch it once per machine:
 

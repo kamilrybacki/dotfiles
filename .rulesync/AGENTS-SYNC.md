@@ -81,7 +81,7 @@ registered only when `jcodemunch-mcp` is on PATH.
 ## MCP: one config, any host
 
 `.rulesync/mcp.jsonc` points the `cellarette` server at the public edge
-(`https://cellarette-mcp.<domain>/mcp?profile=workspace`). Before rulesync runs,
+(`https://splicedock-mcp.<domain>/mcp?profile=workspace`). Before rulesync runs,
 `scripts/lib/stage-mcp.sh` copies `.rulesync/` to a temp dir and
 `claude-home.py render-mcp` rewrites that one line per host and agent:
 

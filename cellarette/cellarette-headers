@@ -23,7 +23,7 @@ import sys
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-EDGE_HOST = "cellarette-mcp.kamilandrzejrybacki.dpdns.org"
+EDGE_HOST = "splicedock-mcp.kamilandrzejrybacki.dpdns.org"
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 

@@ -6,7 +6,7 @@
   //
   // cellarette is reached two ways, chosen per host:
   //   - any machine (laptop, off-LAN too): the public edge
-  //     https://cellarette-mcp.<domain>/mcp (Cloudflare -> Caddy -> in-cluster
+  //     https://splicedock-mcp.<domain>/mcp (Cloudflare -> Caddy -> in-cluster
   //     cellarette, profile `workspace`). It needs `Authorization: Bearer`; the
   //     `cellarette-headers` headersHelper (cellarette/, linked into ~/.local/bin)
   //     adds it from ~/.config/cellarette/token (filled by cellarette-token-sync).
@@ -24,7 +24,7 @@
   "mcpServers": {
     "graft": { "command": "graft", "args": ["mcp"] },
     "jcodemunch": { "command": "uvx", "args": ["--from", "jcodemunch-mcp==1.108.401", "jcodemunch-mcp"] },
-    "cellarette-operator": { "targets": ["claudecode"], "type": "http", "url": "https://cellarette-mcp.kamilandrzejrybacki.dpdns.org/mcp?profile=operator", "headersHelper": "cellarette-headers" },
-    "cellarette": { "type": "http", "url": "https://cellarette-mcp.kamilandrzejrybacki.dpdns.org/mcp?profile=workspace", "headersHelper": "cellarette-headers" }
+    "cellarette-operator": { "targets": ["claudecode"], "type": "http", "url": "https://splicedock-mcp.kamilandrzejrybacki.dpdns.org/mcp?profile=operator", "headersHelper": "cellarette-headers" },
+    "cellarette": { "type": "http", "url": "https://splicedock-mcp.kamilandrzejrybacki.dpdns.org/mcp?profile=workspace", "headersHelper": "cellarette-headers" }
   }
 }
