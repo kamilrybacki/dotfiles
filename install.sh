@@ -38,8 +38,10 @@ link ".config/kitty/kitty.conf"
 link ".config/kitty/everforest.conf"
 link ".config/fastfetch/config.jsonc"
 link ".local/bin/lock.sh"
+link ".local/bin/wsl-cleanup"
 
 chmod +x "$HOME/.local/bin/lock.sh"
+chmod +x "$HOME/.local/bin/wsl-cleanup"
 chmod +x "$HOME/.config/polybar/launch.sh"
 
 echo

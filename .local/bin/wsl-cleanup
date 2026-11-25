@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+# wsl-cleanup: free space inside WSL so the ext4.vhdx can be compacted afterwards.
+#
+#   wsl-cleanup            dry run: show what would be removed and how much
+#   wsl-cleanup --apply    actually remove regenerable caches, then fstrim
+#   wsl-cleanup --apply --aggressive
+#                          also wipe whole caches (uv clean, all unused images)
+#
+# Things whose removal can break work (T3 worktrees, HF models, transcripts)
+# are only reported, never deleted.
+set -uo pipefail
+
+APPLY=0
+AGGRESSIVE=0
+STALE_DAYS=14
+for arg in "$@"; do
+  case "$arg" in
+    --apply) APPLY=1 ;;
+    --aggressive) AGGRESSIVE=1 ;;
+    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+    *) echo "unknown option: $arg" >&2; exit 2 ;;
+  esac
+done
+
+SUDO=""
+[[ $EUID -ne 0 ]] && SUDO="sudo"
+HOME_DIR="${SUDO_USER:+$(getent passwd "$SUDO_USER" | cut -d: -f6)}"
+HOME_DIR="${HOME_DIR:-$HOME}"
+# user-level caches must be cleaned as the owning user, not root
+export PATH="$HOME_DIR/.local/bin:$HOME_DIR/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+U=()
+[[ $EUID -eq 0 && -n "${SUDO_USER:-}" ]] && U=(runuser -u "$SUDO_USER" -- env "HOME=$HOME_DIR" "PATH=$PATH")
+
+bold() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
+size() { $SUDO du -sh "$@" 2>/dev/null | awk '{print $1}' | head -1; }
+have() { command -v "$1" >/dev/null 2>&1; }
+
+# run CMD... : execute when --apply, otherwise print it
+run() {
+  if (( APPLY )); then
+    echo "  + $*"
+    "$@" || echo "  ! failed (continuing)"
+  else
+    echo "  would run: $*"
+  fi
+}
+
+used_before=$(df --output=used -B1 / | tail -1)
+(( APPLY )) || echo "DRY RUN — nothing is deleted. Re-run with --apply."
+
+bold "Package caches"
+if have uv; then
+  echo "uv cache: $(size "$("${U[@]}" uv cache dir 2>/dev/null)")"
+  if (( AGGRESSIVE )); then run "${U[@]}" uv cache clean; else run "${U[@]}" uv cache prune; fi
+fi
+if [[ -d "$HOME_DIR/.cache/pip" ]]; then
+  echo "pip cache: $(size "$HOME_DIR/.cache/pip")"
+  run rm -rf "$HOME_DIR/.cache/pip"
+fi
+if have npm; then
+  echo "npm cache: $(size "$HOME_DIR/.npm/_cacache")"
+  run "${U[@]}" npm cache clean --force
+fi
+if have pnpm; then
+  echo "pnpm store: $(size "$("${U[@]}" pnpm store path 2>/dev/null)")"
+  run "${U[@]}" pnpm store prune
+fi
+if have yarn && [[ -d "$HOME_DIR/.cache/yarn" ]]; then
+  echo "yarn cache: $(size "$HOME_DIR/.cache/yarn")"
+  run "${U[@]}" yarn cache clean
+fi
+if [[ -d "$HOME_DIR/.cache/go-build" ]]; then
+  echo "go build cache: $(size "$HOME_DIR/.cache/go-build")"
+  have go && run "${U[@]}" go clean -cache
+fi
+if [[ -d "$HOME_DIR/.cargo/registry/cache" ]]; then
+  echo "cargo registry cache: $(size "$HOME_DIR/.cargo/registry/cache")"
+  run rm -rf "$HOME_DIR/.cargo/registry/cache"
+fi
+
+bold "Container images"
+echo "/var/lib/containerd: $(size /var/lib/containerd)"
+if have nerdctl; then
+  if (( AGGRESSIVE )); then run $SUDO nerdctl image prune --all --force
+  else run $SUDO nerdctl image prune --force; fi
+  run $SUDO nerdctl builder prune --force
+elif have ctr && ! { have docker && docker info >/dev/null 2>&1; }; then
+  # with Docker present its images live in containerd's "moby" namespace;
+  # only docker prune knows which of them running containers still need
+  if (( AGGRESSIVE )); then
+    for ns in $($SUDO ctr namespaces ls -q 2>/dev/null); do
+      run $SUDO ctr -n "$ns" images prune --all
+    done
+  else
+    echo "  ctr only: unused images are pruned with --aggressive"
+  fi
+fi
+if have docker && docker info >/dev/null 2>&1; then
+  docker system df 2>/dev/null
+  if (( AGGRESSIVE )); then
+    run docker system prune --all --force
+    run docker builder prune --all --force
+  else
+    run docker system prune --force
+  fi
+fi
+
+bold "System"
+echo "apt cache: $(size /var/cache/apt/archives)"
+run $SUDO apt-get clean
+if have journalctl; then
+  echo "journal: $($SUDO journalctl --disk-usage 2>/dev/null | grep -oE '[0-9.]+[KMGT]')"
+  run $SUDO journalctl --vacuum-size=200M
+fi
+old_tmp=$($SUDO find /tmp /var/tmp -xdev -mindepth 1 -type f -mtime +7 2>/dev/null | wc -l)
+echo "files older than 7 days in /tmp, /var/tmp: $old_tmp"
+run $SUDO find /tmp /var/tmp -xdev -mindepth 1 -type f -mtime +7 -delete
+
+bold "Report only (remove by hand if not needed)"
+if [[ -d "$HOME_DIR/.t3/worktrees" ]]; then
+  stale=()
+  for d in "$HOME_DIR"/.t3/worktrees/*/*/ "$HOME_DIR"/.t3/worktrees/*/; do
+    [[ -e "$d/.git" ]] || continue
+    [[ -z $(find "$d" -maxdepth 2 -newermt "-$STALE_DAYS days" -print -quit 2>/dev/null) ]] && stale+=("$d")
+  done
+  if (( ${#stale[@]} )); then
+    total=$(du -sch "${stale[@]}" 2>/dev/null | tail -1 | awk '{print $1}')
+    echo "T3 worktrees untouched for $STALE_DAYS+ days: ${#stale[@]} (total $total), biggest:"
+    du -sh "${stale[@]}" 2>/dev/null | sort -rh | head -10 | sed 's/^/  /'
+    echo "  remove via T3, or: git -C <repo> worktree remove <path>"
+  fi
+fi
+if [[ -d "$HOME_DIR/.cache/huggingface/hub" ]]; then
+  echo "HuggingFace hub: $(size "$HOME_DIR/.cache/huggingface/hub")  (review: hf cache scan / hf cache delete)"
+fi
+for d in .claude/projects .codex/sessions .local/share/opencode; do
+  [[ -d "$HOME_DIR/$d" ]] && printf '  %6s  ~/%s\n' "$(size "$HOME_DIR/$d")" "$d"
+done
+echo "node_modules dirs over 500 MB under ~/Code:"
+find "$HOME_DIR/Code" -xdev -type d -name node_modules -prune 2>/dev/null \
+  | xargs -r du -sm 2>/dev/null | awk '$1>500{printf "  %5d MB  %s\n",$1,$2}' | sort -rn
+
+bold "Result"
+if (( APPLY )); then
+  used_after=$(df --output=used -B1 / | tail -1)
+  freed=$(( (used_before - used_after) / 1024 / 1024 ))
+  echo "freed inside WSL: ${freed} MB"
+  run $SUDO fstrim -v /
+  echo
+  echo "Space is free inside Linux now, but the .vhdx on C: is still the same size."
+  echo "To give it back to Windows: 'wsl --shutdown', then 'compact vdisk' in an elevated diskpart."
+fi
+df -h / | tail -1

@@ -56,7 +56,8 @@ Both i3 and Polybar read colors via `xrdb` at startup.
 │   │   └── everforest.conf  ← terminal colors
 │   └── fastfetch/config.jsonc
 └── .local/bin/
-    └── lock.sh              ← i3lock-color with Everforest theme
+    ├── lock.sh              ← i3lock-color with Everforest theme
+    └── wsl-cleanup          ← frees regenerable caches in WSL, then fstrim
 ```
 
 ## Install
@@ -69,6 +70,23 @@ bash install.sh
 
 The install script symlinks each file to its correct location.
 Existing files are backed up with a `.bak` suffix.
+
+## WSL disk cleanup
+
+WSL keeps its disk in a growing `ext4.vhdx` on `C:`. `wsl-cleanup` removes
+regenerable caches (uv, npm, pip, cargo, Docker build cache, old `/tmp` files)
+and runs `fstrim`; with a sparse vhdx the freed space goes back to Windows.
+
+```bash
+sudo -E wsl-cleanup                       # dry run
+sudo -E wsl-cleanup --apply               # clean + fstrim
+sudo -E wsl-cleanup --apply --aggressive  # whole caches, all unused images
+```
+
+Note: `--apply` runs `docker system prune`, which deletes stopped containers.
+One-time setup on Windows: `wsl --manage Ubuntu --set-sparse true --allow-unsafe`
+(admin, WSL shut down), then `scripts/register-wsl-cleanup-task.ps1` schedules a
+weekly run logging to `/var/log/wsl-cleanup.log`.
 
 ## Dependencies
 
