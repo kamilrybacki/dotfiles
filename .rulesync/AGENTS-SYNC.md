@@ -16,6 +16,7 @@ agent's native file from it.
   30-claude-graft.md         targets: claudecode                (Claude only)
   30-codex-nav.md            targets: codexcli                  (Codex only)
   30-pi-scope.md             targets: pi                        (Pi only)
+  45-compool.md              targets: claudecode, codexcli, pi (shared)
   50-jev-decisions.md        targets: claudecode, codexcli, pi (shared; see jev/README.md)
 ```
 
