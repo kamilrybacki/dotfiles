@@ -137,6 +137,11 @@ VAULT_ADDR=http://<vault>:8200 splicedock-token-sync   # on the LAN / WireGuard
 splicedock-token-sync --stdin                          # anywhere else: paste it
 ```
 
+Agents can combine several splicedock tools in one `code_mode__execute` call:
+one script runs independent calls in parallel (`Promise.all`) and returns only a
+small summary, instead of one round trip per tool. The shared rule is in
+[`.rulesync/rules/10-splicedock-first.md`](.rulesync/rules/10-splicedock-first.md).
+
 The bootstrap prints whatever is left to do (token, Jev key, PATH, Codex env
 var). Details: [`.rulesync/AGENTS-SYNC.md`](.rulesync/AGENTS-SYNC.md).
 
